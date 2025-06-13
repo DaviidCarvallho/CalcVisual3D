@@ -1,4 +1,3 @@
-
 import React, { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text, Grid } from '@react-three/drei';
@@ -13,8 +12,9 @@ interface Revolution3DProps {
 
 const RevolutionMesh = ({ functionStr, xMin, xMax, showRevolution }: Revolution3DProps) => {
   const meshRef = useRef<THREE.Mesh>(null);
+  const lineRef = useRef<THREE.Line>(null);
 
-  const geometry = useMemo(() => {
+  const { geometry, isLine } = useMemo(() => {
     const evaluateFunction = (x: number) => {
       try {
         let expr = functionStr
@@ -47,7 +47,7 @@ const RevolutionMesh = ({ functionStr, xMin, xMax, showRevolution }: Revolution3
       }
 
       const geometry = new THREE.LatheGeometry(points, 32);
-      return geometry;
+      return { geometry, isLine: false };
     } else {
       // Criar linha da função
       const points = [];
@@ -63,7 +63,7 @@ const RevolutionMesh = ({ functionStr, xMin, xMax, showRevolution }: Revolution3
       }
 
       const geometry = new THREE.BufferGeometry().setFromPoints(points);
-      return geometry;
+      return { geometry, isLine: true };
     }
   }, [functionStr, xMin, xMax, showRevolution]);
 
@@ -85,9 +85,7 @@ const RevolutionMesh = ({ functionStr, xMin, xMax, showRevolution }: Revolution3
           />
         </mesh>
       ) : (
-        <line geometry={geometry}>
-          <lineBasicMaterial color="#3b82f6" linewidth={3} />
-        </line>
+        <primitive object={new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: "#3b82f6" }))} />
       )}
     </>
   );
