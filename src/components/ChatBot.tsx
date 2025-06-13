@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Send, Bot, User } from 'lucide-react';
+import { Send, Bot, User, Loader2 } from 'lucide-react';
+import { getChatResponse } from '@/services/openaiService';
 
 interface Message {
   id: number;
@@ -16,15 +17,16 @@ const ChatBot = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
-      text: "Olá! Sou seu assistente de matemática. Posso ajudar você com questões sobre funções, cálculo e sólidos de revolução. Como posso ajudar?",
+      text: "Olá! Sou seu assistente de matemática powered by OpenAI. Posso ajudar você com questões sobre funções, cálculo e sólidos de revolução. Como posso ajudar?",
       isBot: true,
       timestamp: new Date()
     }
   ]);
   const [inputText, setInputText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSendMessage = () => {
-    if (inputText.trim() === '') return;
+  const handleSendMessage = async () => {
+    if (inputText.trim() === '' || isLoading) return;
 
     const userMessage: Message = {
       id: messages.length + 1,
@@ -34,44 +36,42 @@ const ChatBot = () => {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = inputText;
     setInputText('');
+    setIsLoading(true);
 
-    // Simular resposta do bot
-    setTimeout(() => {
+    try {
+      // Preparar histórico da conversa para a API
+      const conversationHistory = messages.slice(-6).map(msg => ({
+        role: msg.isBot ? 'assistant' as const : 'user' as const,
+        content: msg.text
+      }));
+
+      const response = await getChatResponse(currentInput, conversationHistory);
+      
       const botResponse: Message = {
         id: messages.length + 2,
-        text: getBotResponse(inputText),
+        text: response,
         isBot: true,
         timestamp: new Date()
       };
+      
       setMessages(prev => [...prev, botResponse]);
-    }, 1000);
-  };
-
-  const getBotResponse = (userInput: string): string => {
-    const input = userInput.toLowerCase();
-    
-    if (input.includes('função') || input.includes('f(x)')) {
-      return "Funções são relações matemáticas que associam cada elemento de um conjunto (domínio) a um único elemento de outro conjunto (contradomínio). Você pode inserir funções como x^2, sin(x), ou exp(x) no painel ao lado!";
+    } catch (error) {
+      const errorMessage: Message = {
+        id: messages.length + 2,
+        text: "Desculpe, ocorreu um erro ao processar sua pergunta. Tente novamente.",
+        isBot: true,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
     }
-    
-    if (input.includes('sólido') || input.includes('revolução')) {
-      return "Um sólido de revolução é formado quando rotacionamos uma curva em torno de um eixo. O volume pode ser calculado usando a fórmula V = π∫[a,b] [f(x)]² dx. Experimente clicar no botão 'Sólido de Revolução' para ver a visualização 3D!";
-    }
-    
-    if (input.includes('derivada')) {
-      return "A derivada representa a taxa de variação instantânea de uma função. Para f(x) = x², a derivada é f'(x) = 2x. As derivadas são fundamentais para encontrar máximos, mínimos e pontos de inflexão.";
-    }
-    
-    if (input.includes('integral')) {
-      return "A integral é o processo inverso da derivação. Ela pode representar a área sob uma curva ou o volume de um sólido. Para calcular volumes de sólidos de revolução, usamos integrais definidas.";
-    }
-    
-    return "Interessante! Posso ajudar com conceitos de funções, derivadas, integrais e sólidos de revolução. Experimente inserir diferentes funções no painel de controles para ver as visualizações!";
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !isLoading) {
       handleSendMessage();
     }
   };
@@ -81,7 +81,7 @@ const ChatBot = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Bot className="h-5 w-5 text-blue-600" />
-          Assistente de Matemática
+          Assistente de Matemática - OpenAI
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col h-80">
@@ -109,6 +109,17 @@ const ChatBot = () => {
               </div>
             </div>
           ))}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="bg-gray-100 text-gray-800 px-3 py-2 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Bot className="h-4 w-4" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Pensando...</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         
         <div className="flex gap-2">
@@ -118,9 +129,14 @@ const ChatBot = () => {
             onKeyPress={handleKeyPress}
             placeholder="Digite sua pergunta sobre matemática..."
             className="flex-1"
+            disabled={isLoading}
           />
-          <Button onClick={handleSendMessage} size="sm">
-            <Send className="h-4 w-4" />
+          <Button onClick={handleSendMessage} size="sm" disabled={isLoading}>
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </Button>
         </div>
       </CardContent>
