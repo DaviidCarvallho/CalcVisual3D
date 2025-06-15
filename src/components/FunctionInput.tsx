@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,25 +14,58 @@ const FunctionInput = ({ onFunctionChange, onGenerateRevolution }: FunctionInput
   const [function2, setFunction2] = useState('');
   const [showSecondFunction, setShowSecondFunction] = useState(false);
 
-  // Valores padrão fixos para visualização
-  const getDefaultRange = (func: string) => {
-    if (func.includes('sin') || func.includes('cos') || func.includes('tan')) {
+  // Função melhorada para calcular ranges mais precisos
+  const getOptimalRange = (func1: string, func2?: string) => {
+    const functions = [func1, func2].filter(Boolean);
+    
+    // Funções trigonométricas - usar múltiplos de π para melhor visualização
+    if (functions.some(f => f.includes('sin') || f.includes('cos') || f.includes('tan'))) {
       return { min: -2 * Math.PI, max: 2 * Math.PI };
     }
-    if (func.includes('exp')) {
+    
+    // Funções exponenciais - range menor para evitar explosão
+    if (functions.some(f => f.includes('exp'))) {
       return { min: -3, max: 3 };
     }
-    if (func.includes('sqrt') || func.includes('log')) {
+    
+    // Funções logarítmicas ou raiz quadrada - apenas valores positivos
+    if (functions.some(f => f.includes('log') || f.includes('sqrt'))) {
       return { min: 0.1, max: 10 };
     }
+    
+    // Funções racionais (1/x) - evitar zero e usar range simétrico
+    if (functions.some(f => f.includes('1/x') || f.match(/\d+\/x/))) {
+      return { min: -10, max: 10 };
+    }
+    
+    // Polinômios de grau alto - range menor para melhor visualização
+    if (functions.some(f => f.includes('^3') || f.includes('^4') || f.includes('^5'))) {
+      return { min: -3, max: 3 };
+    }
+    
+    // Funções quadráticas - range médio
+    if (functions.some(f => f.includes('^2') || f.includes('x²'))) {
+      return { min: -6, max: 6 };
+    }
+    
+    // Funções mistas (combinações) - range adaptativo
+    if (functions.some(f => f.includes('+') && (f.includes('sin') || f.includes('cos')))) {
+      return { min: -4, max: 4 };
+    }
+    
+    // Padrão para funções lineares e outras
     return { min: -5, max: 5 };
   };
 
   const handleSubmit = () => {
-    const range = getDefaultRange(function1);
+    const secondFunc = showSecondFunction && function2.trim() ? function2 : null;
+    const range = getOptimalRange(function1, secondFunc || undefined);
+    
+    console.log('Range calculado:', range, 'para funções:', function1, secondFunc);
+    
     onFunctionChange(
       function1, 
-      showSecondFunction && function2.trim() ? function2 : null, 
+      secondFunc, 
       range.min, 
       range.max
     );

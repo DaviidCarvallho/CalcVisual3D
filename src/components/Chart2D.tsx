@@ -25,7 +25,9 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
     }
 
     const points = [];
-    const segments = 200;
+    // Ajustar número de segmentos baseado no range para melhor precisão
+    const range = xMax - xMin;
+    const segments = Math.max(200, Math.min(500, Math.floor(range * 50)));
     const step = (xMax - xMin) / segments;
     
     for (let i = 0; i <= segments; i++) {
@@ -35,12 +37,12 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
       
       if (!isNaN(y1) && isFinite(y1)) {
         const point: any = { 
-          x: Number(x.toFixed(3)), 
-          y1: Number(y1.toFixed(3))
+          x: Number(x.toFixed(4)), 
+          y1: Number(y1.toFixed(4))
         };
         
         if (y2 !== null && !isNaN(y2) && isFinite(y2)) {
-          point.y2 = Number(y2.toFixed(3));
+          point.y2 = Number(y2.toFixed(4));
         }
         
         points.push(point);
@@ -53,7 +55,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
 
   const hasSecondFunction = function2 && function2.trim() !== '';
 
-  // Calcular limites dos eixos Y dinamicamente, sempre incluindo o zero
+  // Calcular limites dos eixos Y dinamicamente com melhor lógica
   const { yMin, yMax } = useMemo(() => {
     if (data.length === 0) return { yMin: -5, yMax: 5 };
     
@@ -63,16 +65,35 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
       return values;
     });
     
-    const min = Math.min(...allYValues, 0); // Sempre incluir o zero
-    const max = Math.max(...allYValues, 0); // Sempre incluir o zero
-    const range = max - min || 1;
-    const padding = range * 0.1;
+    const min = Math.min(...allYValues);
+    const max = Math.max(...allYValues);
+    
+    // Sempre incluir zero no range para melhor referência visual
+    const actualMin = Math.min(min, 0);
+    const actualMax = Math.max(max, 0);
+    
+    const range = actualMax - actualMin || 1;
+    const padding = range * 0.15; // Padding um pouco maior para melhor visualização
     
     return {
-      yMin: min - padding,
-      yMax: max + padding
+      yMin: actualMin - padding,
+      yMax: actualMax + padding
     };
   }, [data]);
+
+  // Função para formatar valores dos eixos de forma mais inteligente
+  const formatAxisValue = (value: number, isX: boolean = false) => {
+    if (isX && Math.abs(value - Math.PI) < 0.01) return 'π';
+    if (isX && Math.abs(value + Math.PI) < 0.01) return '-π';
+    if (isX && Math.abs(value - 2 * Math.PI) < 0.01) return '2π';
+    if (isX && Math.abs(value + 2 * Math.PI) < 0.01) return '-2π';
+    
+    if (Math.abs(value) >= 1000) return value.toExponential(1);
+    if (Math.abs(value) >= 100) return value.toFixed(0);
+    if (Math.abs(value) >= 10) return value.toFixed(1);
+    if (Math.abs(value) >= 1) return value.toFixed(2);
+    return value.toFixed(3);
+  };
 
   if (data.length === 0) {
     return (
@@ -98,40 +119,46 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
             </span>
           )}
         </h3>
+        <p className="text-xs text-gray-500 mt-1">
+          Domínio: [{formatAxisValue(xMin, true)}, {formatAxisValue(xMax, true)}]
+        </p>
       </div>
       
       <div className="h-80 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+          <LineChart data={data} margin={{ top: 20, right: 30, left: 40, bottom: 40 }}>
             <CartesianGrid strokeDasharray="2 2" stroke="#e0e7ff" />
             <XAxis 
               dataKey="x" 
               stroke="#6366f1"
-              tick={{ fontSize: 12 }}
-              axisLine={{ stroke: '#6366f1' }}
+              tick={{ fontSize: 11 }}
+              axisLine={{ stroke: '#6366f1', strokeWidth: 1.5 }}
               tickLine={{ stroke: '#6366f1' }}
               domain={[xMin, xMax]}
               type="number"
-              tickFormatter={(value) => value.toFixed(1)}
+              tickFormatter={(value) => formatAxisValue(value, true)}
+              tickCount={8}
             />
             <YAxis 
               stroke="#6366f1"
-              tick={{ fontSize: 12 }}
-              axisLine={{ stroke: '#6366f1' }}
+              tick={{ fontSize: 11 }}
+              axisLine={{ stroke: '#6366f1', strokeWidth: 1.5 }}
               tickLine={{ stroke: '#6366f1' }}
               domain={[yMin, yMax]}
-              tickFormatter={(value) => value.toFixed(1)}
+              tickFormatter={(value) => formatAxisValue(value)}
+              tickCount={8}
             />
             <Tooltip 
               formatter={(value: number, name: string) => [
-                value.toFixed(3), 
+                formatAxisValue(value), 
                 name === 'y1' ? 'f(x)' : 'g(x)'
               ]}
-              labelFormatter={(value: number) => `x = ${value.toFixed(3)}`}
+              labelFormatter={(value: number) => `x = ${formatAxisValue(value, true)}`}
               contentStyle={{
                 backgroundColor: 'rgba(255, 255, 255, 0.95)',
                 border: '1px solid #e0e7ff',
-                borderRadius: '8px'
+                borderRadius: '8px',
+                fontSize: '12px'
               }}
             />
             
@@ -144,6 +171,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
               dot={false}
               name="f(x)"
               strokeOpacity={0.9}
+              connectNulls={false}
             />
             
             {/* Segunda função - apenas se existir */}
@@ -156,6 +184,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 dot={false}
                 name="g(x)"
                 strokeOpacity={0.9}
+                connectNulls={false}
               />
             )}
           </LineChart>
@@ -163,7 +192,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
       </div>
       
       <div className="mt-2 text-xs text-gray-500 text-center">
-        {hasSecondFunction ? 'Visualização de duas funções matemáticas' : 'Gráfico da função matemática'}
+        {hasSecondFunction ? 'Comparação entre duas funções matemáticas' : 'Visualização da função matemática'}
       </div>
     </div>
   );
