@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, ReferenceDot } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { evaluateFunction } from '@/utils/mathParser';
 import { Button } from '@/components/ui/button';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
@@ -17,22 +17,21 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
   const [panX, setPanX] = useState(0);
   const [panY, setPanY] = useState(0);
 
-  const { data, intersections } = useMemo(() => {
+  const data = useMemo(() => {
     console.log('Gerando dados do gráfico:', { function1, function2, xMin, xMax });
     
     if (!function1 || typeof function1 !== 'string') {
       console.error('function1 é inválida:', function1);
-      return { data: [], intersections: [] };
+      return [];
     }
     
     if (typeof xMin !== 'number' || typeof xMax !== 'number' || xMin >= xMax) {
       console.error('Parâmetros xMin/xMax inválidos:', { xMin, xMax });
-      return { data: [], intersections: [] };
+      return [];
     }
 
     const points = [];
-    const intersectionPoints = [];
-    const segments = 200; // Reduzir para melhor performance
+    const segments = 200;
     const step = (xMax - xMin) / segments;
     
     for (let i = 0; i <= segments; i++) {
@@ -48,71 +47,45 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
         
         if (y2 !== null && !isNaN(y2) && isFinite(y2)) {
           point.y2 = Number(y2.toFixed(3));
+          // Calcular área absoluta entre as funções para melhor visualização
           point.area = Math.abs(y1 - y2);
         }
         
         points.push(point);
       }
     }
-
-    // Detecção simplificada de interseções
-    if (function2) {
-      for (let i = 0; i < points.length - 1; i++) {
-        const current = points[i];
-        const next = points[i + 1];
-        
-        if (current.y1 !== undefined && current.y2 !== undefined && 
-            next.y1 !== undefined && next.y2 !== undefined) {
-          
-          const diff1 = current.y1 - current.y2;
-          const diff2 = next.y1 - next.y2;
-          
-          if (diff1 * diff2 <= 0) {
-            const intersectionX = (current.x + next.x) / 2;
-            const intersectionY1 = evaluateFunction(function1, intersectionX);
-            const intersectionY2 = evaluateFunction(function2, intersectionX);
-            
-            if (!isNaN(intersectionY1) && !isNaN(intersectionY2)) {
-              intersectionPoints.push({
-                x: Number(intersectionX.toFixed(3)),
-                y: Number(((intersectionY1 + intersectionY2) / 2).toFixed(3))
-              });
-            }
-          }
-        }
-      }
-    }
     
     console.log(`Gerados ${points.length} pontos para o gráfico`);
-    console.log(`Encontradas ${intersectionPoints.length} interseções`);
-    return { data: points, intersections: intersectionPoints };
+    return points;
   }, [function1, function2, xMin, xMax]);
 
   const hasSecondFunction = function2 && function2.trim() !== '';
 
+  // Calcular limites dos eixos dinamicamente para melhor visualização
+  const { yMin, yMax } = useMemo(() => {
+    if (data.length === 0) return { yMin: -5, yMax: 5 };
+    
+    const allYValues = data.flatMap(point => {
+      const values = [point.y1];
+      if (point.y2 !== undefined) values.push(point.y2);
+      return values;
+    });
+    
+    const min = Math.min(...allYValues);
+    const max = Math.max(...allYValues);
+    const range = max - min;
+    const padding = range * 0.1; // 10% de padding
+    
+    return {
+      yMin: min - padding,
+      yMax: max + padding
+    };
+  }, [data]);
+
   const effectiveXMin = (xMin / zoomLevel) + panX;
   const effectiveXMax = (xMax / zoomLevel) + panX;
-
-  const getAxisTicks = (min: number, max: number, isX: boolean = true) => {
-    const ticks = new Set<number>();
-    ticks.add(0); // Sempre incluir zero
-    
-    let step = 1;
-    const range = max - min;
-    if (range > 20) step = Math.ceil(range / 10);
-    else if (range < 5) step = 0.5;
-    
-    const start = Math.floor(min / step) * step;
-    const end = Math.ceil(max / step) * step;
-    
-    for (let i = start; i <= end; i += step) {
-      if (i >= min - step && i <= max + step) {
-        ticks.add(Math.round(i * 100) / 100);
-      }
-    }
-    
-    return Array.from(ticks).sort((a, b) => a - b);
-  };
+  const effectiveYMin = (yMin / zoomLevel) + panY;
+  const effectiveYMax = (yMax / zoomLevel) + panY;
 
   const handleZoomIn = () => {
     setZoomLevel(prev => Math.min(prev * 1.5, 5));
@@ -152,11 +125,6 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 g(x) = {function2}
               </span>
             )}
-            {intersections.length > 0 && (
-              <span className="block text-xs text-green-600 mt-1">
-                {intersections.length} interseção(ões) encontrada(s)
-              </span>
-            )}
           </h3>
         </div>
         
@@ -193,12 +161,13 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 tick={{ fontSize: 12 }}
                 axisLine={{ stroke: '#6366f1' }}
                 tickLine={{ stroke: '#6366f1' }}
+                domain={[effectiveYMin, effectiveYMax]}
                 tickFormatter={(value) => value.toFixed(1)}
               />
               <Tooltip 
                 formatter={(value: number, name: string) => [
                   value.toFixed(3), 
-                  name === 'y1' ? 'f(x)' : name === 'y2' ? 'g(x)' : 'Área entre funções'
+                  name === 'y1' ? 'f(x)' : name === 'y2' ? 'g(x)' : 'Diferença entre funções'
                 ]}
                 labelFormatter={(value: number) => `x = ${value.toFixed(3)}`}
                 contentStyle={{
@@ -211,7 +180,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 type="monotone"
                 dataKey="area"
                 stroke="rgba(255, 165, 0, 0.8)"
-                fill="rgba(255, 165, 0, 0.3)"
+                fill="rgba(255, 165, 0, 0.2)"
                 fillOpacity={0.4}
                 strokeWidth={0}
               />
@@ -219,7 +188,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 type="monotone" 
                 dataKey="y1" 
                 stroke="#2563eb" 
-                strokeWidth={2}
+                strokeWidth={3}
                 dot={false}
                 name="f(x)"
               />
@@ -227,21 +196,10 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 type="monotone" 
                 dataKey="y2" 
                 stroke="#dc2626" 
-                strokeWidth={2}
+                strokeWidth={3}
                 dot={false}
                 name="g(x)"
               />
-              {intersections.map((point, index) => (
-                <ReferenceDot
-                  key={index}
-                  x={point.x}
-                  y={point.y}
-                  r={4}
-                  fill="#10b981"
-                  stroke="#059669"
-                  strokeWidth={2}
-                />
-              ))}
             </AreaChart>
           ) : (
             <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
@@ -261,6 +219,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 tick={{ fontSize: 12 }}
                 axisLine={{ stroke: '#6366f1' }}
                 tickLine={{ stroke: '#6366f1' }}
+                domain={[effectiveYMin, effectiveYMax]}
                 tickFormatter={(value) => value.toFixed(1)}
               />
               <Tooltip 
@@ -276,7 +235,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 type="monotone" 
                 dataKey="y1" 
                 stroke="#2563eb" 
-                strokeWidth={2}
+                strokeWidth={3}
                 dot={false}
                 name="f(x)"
               />
@@ -286,7 +245,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
       </div>
       
       <div className="mt-2 text-xs text-gray-500 text-center">
-        Zoom: {zoomLevel.toFixed(1)}x | {intersections.length > 0 ? `Interseções: ${intersections.map(p => `(${p.x.toFixed(2)}, ${p.y.toFixed(2)})`).join(', ')}` : 'Use os controles de zoom para explorar'}
+        Zoom: {zoomLevel.toFixed(1)}x | {hasSecondFunction ? 'Área entre funções visualizada em laranja' : 'Use os controles de zoom para explorar'}
       </div>
     </div>
   );
