@@ -1,10 +1,11 @@
-
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import FunctionInput from '@/components/FunctionInput';
 import Chart2D from '@/components/Chart2D';
 import Revolution3D from '@/components/Revolution3D';
 import ChatBot from '@/components/ChatBot';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 const Index = () => {
   const [function1, setFunction1] = useState('x^2');
@@ -12,6 +13,11 @@ const Index = () => {
   const [xMin, setXMin] = useState(-5);
   const [xMax, setXMax] = useState(5);
   const [showRevolution, setShowRevolution] = useState(false);
+  
+  // Novos estados para controlar a visibilidade dos elementos 3D
+  const [showBlueSurface, setShowBlueSurface] = useState(true);
+  const [showRedSurface, setShowRedSurface] = useState(true);
+  const [showFunctionLines, setShowFunctionLines] = useState(true);
 
   const handleFunctionChange = (func1: string, func2: string | null, min: number, max: number) => {
     setFunction1(func1);
@@ -32,6 +38,8 @@ const Index = () => {
     return `[${xMin.toFixed(1)}, ${xMax.toFixed(1)}]`;
   };
 
+  const hasSecondFunction = function2 && function2.trim() !== '';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
       <Header />
@@ -45,8 +53,61 @@ const Index = () => {
               onGenerateRevolution={handleGenerateRevolution}
             />
             
+            {/* Controles de visibilidade 3D */}
+            {showRevolution && hasSecondFunction && (
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-lg border border-purple-200">
+                <h3 className="text-lg font-semibold text-purple-800 mb-4">
+                  Controles de Visualização 3D
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <Switch
+                      id="blue-surface"
+                      checked={showBlueSurface}
+                      onCheckedChange={setShowBlueSurface}
+                    />
+                    <Label 
+                      htmlFor="blue-surface" 
+                      className="text-sm font-medium text-purple-700 cursor-pointer"
+                    >
+                      Superfície Externa (Azul)
+                    </Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-3">
+                    <Switch
+                      id="red-surface"
+                      checked={showRedSurface}
+                      onCheckedChange={setShowRedSurface}
+                    />
+                    <Label 
+                      htmlFor="red-surface" 
+                      className="text-sm font-medium text-purple-700 cursor-pointer"
+                    >
+                      Superfície Interna (Vermelha)
+                    </Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-3">
+                    <Switch
+                      id="function-lines"
+                      checked={showFunctionLines}
+                      onCheckedChange={setShowFunctionLines}
+                    />
+                    <Label 
+                      htmlFor="function-lines" 
+                      className="text-sm font-medium text-purple-700 cursor-pointer"
+                    >
+                      Linhas das Funções
+                    </Label>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {/* Informações matemáticas */}
             <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-6 rounded-lg border border-indigo-200">
+              
               <h3 className="text-lg font-semibold text-indigo-800 mb-3">
                 Conceitos Matemáticos
               </h3>
@@ -96,6 +157,9 @@ const Index = () => {
               xMin={xMin}
               xMax={xMax}
               showRevolution={showRevolution}
+              showBlueSurface={showBlueSurface}
+              showRedSurface={showRedSurface}
+              showFunctionLines={showFunctionLines}
             />
           </div>
 
