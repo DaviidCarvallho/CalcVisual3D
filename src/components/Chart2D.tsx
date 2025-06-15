@@ -81,16 +81,62 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
 
   const hasSecondFunction = function2 && function2.trim() !== '';
 
-  // Configurar ticks dos eixos apenas para números inteiros
-  const getAxisTicks = (min: number, max: number) => {
-    const ticks = [];
+  // Gerar ticks dos eixos garantindo que não haja duplicatas e sempre incluindo o zero
+  const getXAxisTicks = (min: number, max: number) => {
+    const ticks = new Set<number>();
+    
+    // Sempre incluir o zero se estiver no intervalo
+    if (min <= 0 && max >= 0) {
+      ticks.add(0);
+    }
+    
+    // Adicionar números inteiros no intervalo
     const start = Math.ceil(min);
     const end = Math.floor(max);
     
     for (let i = start; i <= end; i++) {
-      ticks.push(i);
+      if (i >= min && i <= max) {
+        ticks.add(i);
+      }
     }
-    return ticks;
+    
+    // Converter para array ordenado
+    return Array.from(ticks).sort((a, b) => a - b);
+  };
+
+  const getYAxisTicks = (data: any[]) => {
+    if (data.length === 0) return [0];
+    
+    const ticks = new Set<number>();
+    
+    // Encontrar min e max dos dados
+    let yMin = Infinity;
+    let yMax = -Infinity;
+    
+    data.forEach(point => {
+      if (point.y1 !== undefined) {
+        yMin = Math.min(yMin, point.y1);
+        yMax = Math.max(yMax, point.y1);
+      }
+      if (point.y2 !== undefined) {
+        yMin = Math.min(yMin, point.y2);
+        yMax = Math.max(yMax, point.y2);
+      }
+    });
+    
+    // Sempre incluir o zero
+    ticks.add(0);
+    
+    // Adicionar números inteiros no intervalo dos dados
+    const start = Math.floor(yMin);
+    const end = Math.ceil(yMax);
+    
+    for (let i = start; i <= end; i++) {
+      ticks.add(i);
+    }
+    
+    // Converter para array ordenado
+    return Array.from(ticks).sort((a, b) => a - b);
   };
 
   if (data.length === 0) {
@@ -105,6 +151,9 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
       </div>
     );
   }
+
+  const xTicks = getXAxisTicks(xMin, xMax);
+  const yTicks = getYAxisTicks(data);
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
@@ -132,16 +181,18 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 tick={{ fontSize: 12 }}
                 axisLine={{ stroke: '#6366f1' }}
                 tickLine={{ stroke: '#6366f1' }}
-                ticks={getAxisTicks(xMin, xMax)}
-                domain={['dataMin', 'dataMax']}
+                ticks={xTicks}
+                domain={[xMin, xMax]}
                 type="number"
+                tickFormatter={(value) => value.toString()}
               />
               <YAxis 
                 stroke="#6366f1"
                 tick={{ fontSize: 12 }}
                 axisLine={{ stroke: '#6366f1' }}
                 tickLine={{ stroke: '#6366f1' }}
-                tickFormatter={(value) => Math.round(value).toString()}
+                ticks={yTicks}
+                tickFormatter={(value) => value.toString()}
               />
               <Tooltip 
                 formatter={(value: number, name: string) => [
@@ -204,16 +255,18 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 tick={{ fontSize: 12 }}
                 axisLine={{ stroke: '#6366f1' }}
                 tickLine={{ stroke: '#6366f1' }}
-                ticks={getAxisTicks(xMin, xMax)}
-                domain={['dataMin', 'dataMax']}
+                ticks={xTicks}
+                domain={[xMin, xMax]}
                 type="number"
+                tickFormatter={(value) => value.toString()}
               />
               <YAxis 
                 stroke="#6366f1"
                 tick={{ fontSize: 12 }}
                 axisLine={{ stroke: '#6366f1' }}
                 tickLine={{ stroke: '#6366f1' }}
-                tickFormatter={(value) => Math.round(value).toString()}
+                ticks={yTicks}
+                tickFormatter={(value) => value.toString()}
               />
               <Tooltip 
                 formatter={(value: number) => [value.toFixed(3), 'f(x)']}

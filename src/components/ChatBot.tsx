@@ -17,7 +17,7 @@ const ChatBot = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
-      text: "Olá! Sou seu assistente especializado em matemática e no CalcViz 3D! 🧮✨\n\nPosso te ajudar com:\n📊 **Visualização de Funções**: Digite funções como x^2, sin(x), exp(x) e veja como elas se comportam\n🎯 **Sólidos de Revolução**: Explore como as funções geram volumes 3D quando rotacionadas\n🔧 **Dicas da Aplicação**: Use as funções pré-definidas ou crie suas próprias. Experimente adicionar uma segunda função para ver a área entre elas!\n📈 **Conceitos Matemáticos**: Tire dúvidas sobre derivadas, integrais, limites e muito mais!\n\nQue tal começar plotando uma função interessante? Experimente 'sin(x) + cos(2*x)' ou me pergunte sobre qualquer conceito matemático!",
+      text: "Olá! Sou seu assistente do CalcViz 3D! 🧮✨\n\nPosso te ajudar com:\n📊 Plotar funções matemáticas\n🎯 Gerar sólidos de revolução\n📈 Explicar conceitos de cálculo\n\nExperimente funções como: x^2, sin(x), exp(x)\nOu me pergunte qualquer dúvida sobre matemática!",
       isBot: true,
       timestamp: new Date()
     }
