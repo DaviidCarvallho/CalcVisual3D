@@ -18,48 +18,61 @@ const RevolutionMesh = ({ functionStr, xMin, xMax, showRevolution }: Revolution3
 
   const { geometry, isLine } = useMemo(() => {
     if (showRevolution) {
-      // Criar geometria do sólido de revolução com escala muito menor
+      // Criar geometria do sólido de revolução garantindo que sempre comece do plano
       const points = [];
-      const segments = 60;
+      const segments = 80;
       const step = (xMax - xMin) / segments;
 
+      // Primeiro, coletar todos os pontos da função
+      const functionPoints = [];
       for (let i = 0; i <= segments; i++) {
         const x = xMin + i * step;
         const y = evaluateFunction(functionStr, x);
         
-        // Filtrar valores inválidos e aplicar escala muito menor
         if (!isNaN(y) && isFinite(y)) {
-          // Escala muito reduzida: máximo 2 unidades de raio, mínimo 0.05
-          const radius = Math.max(0.05, Math.min(2, Math.abs(y) * 0.3));
-          
-          // Apenas adicionar pontos se o raio for razoável
-          if (radius >= 0.05 && radius <= 2) {
-            points.push(new THREE.Vector2(radius, x * 0.5)); // Também reduzir escala em X
-          }
+          functionPoints.push({ x, y });
         }
       }
 
-      // Se não há pontos válidos ou muito poucos, criar pontos padrão menores
-      if (points.length < 3) {
-        points.length = 0;
-        for (let i = 0; i <= 20; i++) {
-          const x = xMin + (i / 20) * (xMax - xMin);
-          const y = evaluateFunction(functionStr, x);
-          const radius = Math.max(0.05, Math.min(1, Math.abs(y || 1) * 0.2));
-          points.push(new THREE.Vector2(radius, x * 0.5));
-        }
+      // Se não há pontos válidos, criar função padrão
+      if (functionPoints.length === 0) {
+        functionPoints.push({ x: xMin, y: 1 });
+        functionPoints.push({ x: xMax, y: 1 });
+      }
+
+      // Normalizar os pontos para garantir que fiquem dentro do plano
+      for (const point of functionPoints) {
+        // Garantir que o raio seja sempre positivo e limitado
+        let radius = Math.abs(point.y);
+        
+        // Limitar o raio máximo para evitar que ultrapasse o plano
+        radius = Math.min(radius, 3);
+        
+        // Garantir raio mínimo para visibilidade
+        radius = Math.max(radius, 0.1);
+        
+        // Posicionar no eixo Z com escala reduzida
+        const zPosition = point.x * 0.4;
+        
+        points.push(new THREE.Vector2(radius, zPosition));
       }
 
       // Garantir que temos pelo menos 2 pontos
       if (points.length < 2) {
-        points.push(new THREE.Vector2(0.05, xMin * 0.5));
-        points.push(new THREE.Vector2(0.5, xMax * 0.5));
+        points.push(new THREE.Vector2(0.1, xMin * 0.4));
+        points.push(new THREE.Vector2(1, xMax * 0.4));
+      }
+
+      // Adicionar ponto no início para garantir que o sólido comece do plano
+      if (points.length > 0) {
+        const firstPoint = points[0];
+        points.unshift(new THREE.Vector2(0, firstPoint.y));
       }
 
       const geometry = new THREE.LatheGeometry(points, 32);
       return { geometry, isLine: false };
     } else {
-      // Criar linha da função com escala reduzida
+      // Criar linha da função 2D
       const points = [];
       const segments = 120;
       const step = (xMax - xMin) / segments;
@@ -69,17 +82,17 @@ const RevolutionMesh = ({ functionStr, xMin, xMax, showRevolution }: Revolution3
         const y = evaluateFunction(functionStr, x);
         
         if (!isNaN(y) && isFinite(y)) {
-          // Escala reduzida para a linha também
-          const scaledX = x * 0.5;
-          const scaledY = Math.max(-4, Math.min(4, y * 0.5));
+          // Limitar valores extremos para melhor visualização
+          const scaledX = x * 0.4;
+          const scaledY = Math.max(-5, Math.min(5, y * 0.6));
           points.push(new THREE.Vector3(scaledX, scaledY, 0));
         }
       }
 
       // Se não há pontos válidos, criar uma linha padrão
       if (points.length === 0) {
-        points.push(new THREE.Vector3(xMin * 0.5, 0, 0));
-        points.push(new THREE.Vector3(xMax * 0.5, 0, 0));
+        points.push(new THREE.Vector3(xMin * 0.4, 0, 0));
+        points.push(new THREE.Vector3(xMax * 0.4, 1, 0));
       }
 
       const geometry = new THREE.BufferGeometry().setFromPoints(points);
@@ -89,7 +102,7 @@ const RevolutionMesh = ({ functionStr, xMin, xMax, showRevolution }: Revolution3
 
   useFrame(() => {
     if (meshRef.current && showRevolution) {
-      meshRef.current.rotation.y += 0.005; // Rotação ligeiramente mais rápida
+      meshRef.current.rotation.y += 0.008; // Rotação mais suave
     }
   });
 
@@ -123,30 +136,41 @@ const Revolution3D = (props: Revolution3DProps) => {
         <p className="text-sm text-gray-300">
           f(x) = {props.functionStr}
         </p>
+        {props.showRevolution && (
+          <p className="text-xs text-gray-400 mt-1">
+            Rotação em torno do eixo X
+          </p>
+        )}
       </div>
       
-      <Canvas camera={{ position: [12, 8, 12], fov: 60 }}>
+      <Canvas camera={{ position: [8, 4, 8], fov: 60 }}>
         <ambientLight intensity={0.6} />
-        <pointLight position={[15, 15, 15]} intensity={1} />
-        <pointLight position={[-10, -5, -10]} intensity={0.4} />
-        <directionalLight position={[8, 8, 8]} intensity={0.5} />
+        <pointLight position={[10, 10, 10]} intensity={1} />
+        <pointLight position={[-8, -4, -8]} intensity={0.4} />
+        <directionalLight position={[5, 5, 5]} intensity={0.5} />
         
         <RevolutionMesh {...props} />
         
-        {/* Grid de referência maior e mais espaçado */}
+        {/* Plano de referência para mostrar onde os sólidos devem ficar */}
+        <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[16, 16]} />
+          <meshBasicMaterial color="#1f2937" transparent opacity={0.3} side={THREE.DoubleSide} />
+        </mesh>
+        
+        {/* Grid de referência */}
         <Grid 
-          args={[20, 20]} 
-          position={[0, -2, 0]} 
-          cellColor="#333333" 
-          sectionColor="#555555"
-          fadeDistance={30}
+          args={[16, 16]} 
+          position={[0, 0, 0]} 
+          cellColor="#374151" 
+          sectionColor="#6b7280"
+          fadeDistance={25}
           fadeStrength={0.8}
         />
         
-        {/* Eixos de coordenadas mais distantes */}
+        {/* Eixos de coordenadas */}
         <Text
-          position={[8, 0, 0]}
-          fontSize={0.5}
+          position={[6, 0, 0]}
+          fontSize={0.4}
           color="red"
           anchorX="center"
           anchorY="middle"
@@ -154,8 +178,8 @@ const Revolution3D = (props: Revolution3DProps) => {
           X
         </Text>
         <Text
-          position={[0, 8, 0]}
-          fontSize={0.5}
+          position={[0, 6, 0]}
+          fontSize={0.4}
           color="green"
           anchorX="center"
           anchorY="middle"
@@ -163,8 +187,8 @@ const Revolution3D = (props: Revolution3DProps) => {
           Y
         </Text>
         <Text
-          position={[0, 0, 8]}
-          fontSize={0.5}
+          position={[0, 0, 6]}
+          fontSize={0.4}
           color="blue"
           anchorX="center"
           anchorY="middle"
@@ -176,10 +200,10 @@ const Revolution3D = (props: Revolution3DProps) => {
           enablePan={true} 
           enableZoom={true} 
           enableRotate={true}
-          minDistance={5}
-          maxDistance={30}
-          maxPolarAngle={Math.PI * 0.9}
-          minPolarAngle={Math.PI * 0.1}
+          minDistance={4}
+          maxDistance={25}
+          maxPolarAngle={Math.PI * 0.95}
+          minPolarAngle={Math.PI * 0.05}
           enableDamping={true}
           dampingFactor={0.05}
         />
