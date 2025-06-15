@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Area, ComposedChart } from 'recharts';
 import { evaluateFunction } from '@/utils/mathParser';
@@ -76,22 +77,22 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
           point.x <= areaData.effectiveXMax && 
           point.y2 !== undefined) {
         
-        // Corrigir: usar as funções diretamente para criar o preenchimento
-        // A função inferior será a base (baseValue) e a superior será o topo
+        // Criar dados para área empilhada corretamente
         const lowerY = Math.min(point.y1, point.y2);
         const upperY = Math.max(point.y1, point.y2);
+        const areaHeight = upperY - lowerY;
         
         return {
           ...point,
-          // Para o recharts funcionar corretamente com área:
-          areaLower: Number(lowerY.toFixed(4)), // Função inferior
-          areaUpper: Number(upperY.toFixed(4))  // Função superior
+          // Dados para área empilhada: base + altura
+          areaBase: Number(lowerY.toFixed(4)), // Base (função inferior)
+          areaFill: Number(areaHeight.toFixed(4)) // Altura da área (diferença)
         };
       }
       return {
         ...point,
-        areaLower: null,
-        areaUpper: null
+        areaBase: null,
+        areaFill: null
       };
     });
   }, [data, areaData, hasSecondFunction]);
@@ -312,16 +313,28 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
               }}
             />
             
-            {/* Área entre as curvas - CORRIGIDA para não aparecer invertida */}
+            {/* Área base (função inferior) - invisível */}
             {hasSecondFunction && (
               <Area
                 type="monotone"
-                dataKey="areaUpper"
+                dataKey="areaBase"
+                stackId="area"
+                stroke="none"
+                fill="transparent"
+                connectNulls={false}
+              />
+            )}
+            
+            {/* Área de preenchimento (diferença entre funções) */}
+            {hasSecondFunction && (
+              <Area
+                type="monotone"
+                dataKey="areaFill"
+                stackId="area"
                 stroke="none"
                 fill="rgba(34, 197, 94, 0.4)"
                 fillOpacity={0.6}
                 connectNulls={false}
-                baseValue="areaLower" // Usar a função inferior como base
               />
             )}
             
