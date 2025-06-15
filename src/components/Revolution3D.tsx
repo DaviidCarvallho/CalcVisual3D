@@ -1,4 +1,3 @@
-
 import React, { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text, Grid } from '@react-three/drei';
@@ -63,22 +62,22 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
       
       return { geometry, secondGeometry: null, regionGeometry: null };
     } else if (hasSecondFunction) {
-      // Criar tapete 3D corrigido da área entre as duas funções
+      // Criar tapete 3D da área entre duas funções
       const areaResult = calculateAreaBetweenCurves(functionStr, function2, xMin, xMax);
       const effectiveXMin = areaResult.effectiveXMin;
       const effectiveXMax = areaResult.effectiveXMax;
       
       console.log('Criando tapete 3D para área entre funções:', effectiveXMin, effectiveXMax);
       
-      const segments = 60;
+      const segments = 50;
       const step = (effectiveXMax - effectiveXMin) / segments;
       
-      // Criar geometria do tapete como uma superfície plana
+      // Criar geometria do tapete como uma superfície
       const carpetVertices = [];
       const carpetIndices = [];
       const carpetUvs = [];
       
-      // Gerar pontos do tapete
+      // Gerar pontos do tapete no plano XY (não YZ)
       for (let i = 0; i <= segments; i++) {
         const x = effectiveXMin + i * step;
         const y1 = evaluateFunction(functionStr, x);
@@ -91,21 +90,17 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
           
           const lowerY = Math.min(scaledY1, scaledY2);
           const upperY = Math.max(scaledY1, scaledY2);
-          const midY = (lowerY + upperY) / 2;
-          const height = Math.abs(upperY - lowerY);
           
-          // Criar uma faixa vertical representando a área em cada ponto x
-          const width = 0.05; // Largura da faixa
-          
-          // 4 vértices para cada faixa retangular
+          // Criar 4 vértices para formar um quadrilátero vertical
+          // representando a área neste ponto x
           const baseIndex = i * 4;
           
-          // Vértices da faixa (retângulo no plano YZ)
+          // Vértices no plano XY com pequena profundidade em Z
           carpetVertices.push(
-            scaledX, lowerY, -width,  // inferior esquerdo
-            scaledX, upperY, -width,  // superior esquerdo
-            scaledX, upperY, width,   // superior direito
-            scaledX, lowerY, width    // inferior direito
+            scaledX, lowerY, -0.02,  // inferior frente
+            scaledX, upperY, -0.02,  // superior frente
+            scaledX, upperY, 0.02,   // superior trás
+            scaledX, lowerY, 0.02    // inferior trás
           );
           
           // UVs para textura
@@ -116,28 +111,30 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
             1, 0
           );
           
-          // Criar 2 triângulos para formar o retângulo
+          // Criar faces do quadrilátero
+          carpetIndices.push(
+            // Face frontal
+            baseIndex, baseIndex + 1, baseIndex + 2,
+            baseIndex, baseIndex + 2, baseIndex + 3,
+            // Face traseira (invertida)
+            baseIndex + 3, baseIndex + 2, baseIndex + 1,
+            baseIndex + 3, baseIndex + 1, baseIndex
+          );
+          
+          // Conectar com o quadrilátero anterior
           if (i > 0) {
             const prevBase = (i - 1) * 4;
             
-            // Conectar com a faixa anterior
+            // Conectar faces laterais
             carpetIndices.push(
-              // Triângulo 1
+              // Lateral superior
               prevBase + 1, baseIndex + 1, prevBase + 2,
-              // Triângulo 2
               baseIndex + 1, baseIndex + 2, prevBase + 2,
-              // Triângulo 3
-              prevBase + 2, baseIndex + 2, prevBase + 3,
-              // Triângulo 4
-              baseIndex + 2, baseIndex + 3, prevBase + 3
+              // Lateral inferior
+              prevBase, prevBase + 3, baseIndex,
+              prevBase + 3, baseIndex + 3, baseIndex
             );
           }
-          
-          // Face da faixa atual
-          carpetIndices.push(
-            baseIndex, baseIndex + 1, baseIndex + 2,
-            baseIndex, baseIndex + 2, baseIndex + 3
-          );
         }
       }
       
@@ -165,8 +162,8 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
           const scaledY1 = Math.max(-3, Math.min(3, y1 * 0.5));
           const scaledY2 = Math.max(-3, Math.min(3, y2 * 0.5));
           
-          points1.push(new THREE.Vector3(scaledX, scaledY1, 0));
-          points2.push(new THREE.Vector3(scaledX, scaledY2, 0));
+          points1.push(new THREE.Vector3(scaledX, scaledY1, 0.1));
+          points2.push(new THREE.Vector3(scaledX, scaledY2, 0.1));
         }
       }
       
@@ -235,7 +232,7 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
               <meshStandardMaterial 
                 color="#22c55e" 
                 transparent 
-                opacity={0.7}
+                opacity={0.8}
                 side={THREE.DoubleSide}
                 roughness={0.3}
                 metalness={0.1}

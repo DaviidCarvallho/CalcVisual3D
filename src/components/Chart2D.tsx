@@ -26,8 +26,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
 
     const points = [];
     const range = xMax - xMin;
-    // Reduzir número de segmentos para melhorar performance
-    const segments = Math.max(200, Math.min(400, Math.floor(range * 40)));
+    const segments = Math.max(150, Math.min(300, Math.floor(range * 30))); // Reduzir segmentos para performance
     const step = (xMax - xMin) / segments;
     
     for (let i = 0; i <= segments; i++) {
@@ -68,7 +67,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
     };
   }, [function1, function2, xMin, xMax, hasSecondFunction]);
 
-  // Gerar dados otimizados para a área
+  // Gerar dados para a área entre as curvas
   const areaChartData = useMemo(() => {
     if (!areaData || !hasSecondFunction) return data;
     
@@ -77,27 +76,26 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
           point.x <= areaData.effectiveXMax && 
           point.y2 !== undefined) {
         
-        // Calcular diferença absoluta para área sempre positiva
-        const diff = Math.abs(point.y1 - point.y2);
-        const minY = Math.min(point.y1, point.y2);
-        const maxY = Math.max(point.y1, point.y2);
+        // A área deve ser preenchida entre as duas curvas
+        // Usar a função inferior como base e a superior como topo
+        const lowerY = Math.min(point.y1, point.y2);
+        const upperY = Math.max(point.y1, point.y2);
         
         return {
           ...point,
-          areaValue: Number(diff.toFixed(4)),
-          areaBase: Number(minY.toFixed(4)),
-          areaTop: Number(maxY.toFixed(4))
+          areaBase: Number(lowerY.toFixed(4)), // Base da área (função inferior)
+          areaHeight: Number((upperY - lowerY).toFixed(4)) // Altura da área
         };
       }
       return {
         ...point,
-        areaValue: 0,
-        areaBase: 0,
-        areaTop: 0
+        areaBase: null,
+        areaHeight: null
       };
     });
   }, [data, areaData, hasSecondFunction]);
 
+  // Calcular limites do eixo Y
   const { yMin, yMax } = useMemo(() => {
     if (data.length === 0) return { yMin: -5, yMax: 5 };
     
@@ -152,6 +150,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
     return value.toFixed(3);
   };
 
+  // Gerar ticks para o eixo Y
   const generateYTicks = useMemo(() => {
     const functions = [function1, function2].filter(Boolean);
     const isTrigonometric = functions.some(f => f.includes('sin') || f.includes('cos'));
@@ -292,8 +291,8 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                   return ['--', name];
                 }
                 
-                if (name === 'areaValue') {
-                  return [formatAxisValue(Math.abs(value)), 'Área'];
+                if (name === 'areaHeight') {
+                  return [formatAxisValue(Math.abs(value)), 'Altura da Área'];
                 }
                 
                 return [
@@ -315,15 +314,17 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
               }}
             />
             
-            {/* Área entre as curvas */}
+            {/* Área entre as curvas - usando stackedArea corretamente */}
             {hasSecondFunction && (
               <Area
                 type="monotone"
-                dataKey="areaValue"
-                stackId="1"
+                dataKey="areaHeight"
+                stackId="area"
                 stroke="none"
-                fill="rgba(34, 197, 94, 0.3)"
-                fillOpacity={0.7}
+                fill="rgba(34, 197, 94, 0.4)"
+                fillOpacity={0.8}
+                baseValue="dataMin"
+                connectNulls={false}
               />
             )}
             
