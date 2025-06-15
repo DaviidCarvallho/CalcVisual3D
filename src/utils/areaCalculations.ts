@@ -15,7 +15,7 @@ export const calculateAreaBetweenCurves = (
   function2: string,
   xMin: number,
   xMax: number,
-  segments: number = 300
+  segments: number = 200 // Reduzir para melhor performance
 ): { points: AreaPoint[], intersections: { x: number, y: number }[], effectiveXMin: number, effectiveXMax: number } => {
   // Encontrar pontos de interseção
   const intersections = findIntersections(function1, function2, xMin, xMax);
@@ -72,11 +72,12 @@ export const calculateAreaValue = (points: AreaPoint[], xMin: number, xMax: numb
   const step = (xMax - xMin) / (points.length - 1);
   
   // Usar regra do trapézio para aproximar a integral
+  // Sempre calcular área em módulo (nunca negativa)
   for (let i = 0; i < points.length - 1; i++) {
     const height1 = Math.abs(points[i].upperY - points[i].lowerY);
     const height2 = Math.abs(points[i + 1].upperY - points[i + 1].lowerY);
-    area += (height1 + height2) * step / 2;
+    area += Math.abs((height1 + height2) * step / 2);
   }
   
-  return area;
+  return Math.abs(area); // Garantir que a área seja sempre positiva
 };

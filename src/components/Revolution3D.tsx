@@ -63,23 +63,97 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
       
       return { geometry, secondGeometry: null, regionGeometry: null };
     } else if (hasSecondFunction) {
-      // Criar "tapete" 3D da área entre as duas funções
+      // Criar tapete 3D corrigido da área entre as duas funções
       const areaResult = calculateAreaBetweenCurves(functionStr, function2, xMin, xMax);
       const effectiveXMin = areaResult.effectiveXMin;
       const effectiveXMax = areaResult.effectiveXMax;
       
       console.log('Criando tapete 3D para área entre funções:', effectiveXMin, effectiveXMax);
       
-      const segments = 50;
+      const segments = 60;
       const step = (effectiveXMax - effectiveXMin) / segments;
       
-      // Pontos para as duas funções (linhas)
-      const points1 = [];
-      const points2 = [];
-      
-      // Criar geometria do "tapete" que representa a área
+      // Criar geometria do tapete como uma superfície plana
       const carpetVertices = [];
       const carpetIndices = [];
+      const carpetUvs = [];
+      
+      // Gerar pontos do tapete
+      for (let i = 0; i <= segments; i++) {
+        const x = effectiveXMin + i * step;
+        const y1 = evaluateFunction(functionStr, x);
+        const y2 = evaluateFunction(function2, x);
+        
+        if (!isNaN(y1) && !isNaN(y2) && isFinite(y1) && isFinite(y2)) {
+          const scaledX = (x - effectiveXMin) / (effectiveXMax - effectiveXMin) * 4 - 2;
+          const scaledY1 = Math.max(-3, Math.min(3, y1 * 0.5));
+          const scaledY2 = Math.max(-3, Math.min(3, y2 * 0.5));
+          
+          const lowerY = Math.min(scaledY1, scaledY2);
+          const upperY = Math.max(scaledY1, scaledY2);
+          const midY = (lowerY + upperY) / 2;
+          const height = Math.abs(upperY - lowerY);
+          
+          // Criar uma faixa vertical representando a área em cada ponto x
+          const width = 0.05; // Largura da faixa
+          
+          // 4 vértices para cada faixa retangular
+          const baseIndex = i * 4;
+          
+          // Vértices da faixa (retângulo no plano YZ)
+          carpetVertices.push(
+            scaledX, lowerY, -width,  // inferior esquerdo
+            scaledX, upperY, -width,  // superior esquerdo
+            scaledX, upperY, width,   // superior direito
+            scaledX, lowerY, width    // inferior direito
+          );
+          
+          // UVs para textura
+          carpetUvs.push(
+            0, 0,
+            0, 1,
+            1, 1,
+            1, 0
+          );
+          
+          // Criar 2 triângulos para formar o retângulo
+          if (i > 0) {
+            const prevBase = (i - 1) * 4;
+            
+            // Conectar com a faixa anterior
+            carpetIndices.push(
+              // Triângulo 1
+              prevBase + 1, baseIndex + 1, prevBase + 2,
+              // Triângulo 2
+              baseIndex + 1, baseIndex + 2, prevBase + 2,
+              // Triângulo 3
+              prevBase + 2, baseIndex + 2, prevBase + 3,
+              // Triângulo 4
+              baseIndex + 2, baseIndex + 3, prevBase + 3
+            );
+          }
+          
+          // Face da faixa atual
+          carpetIndices.push(
+            baseIndex, baseIndex + 1, baseIndex + 2,
+            baseIndex, baseIndex + 2, baseIndex + 3
+          );
+        }
+      }
+      
+      // Criar geometria do tapete
+      let carpetGeometry = null;
+      if (carpetVertices.length > 0) {
+        carpetGeometry = new THREE.BufferGeometry();
+        carpetGeometry.setAttribute('position', new THREE.Float32BufferAttribute(carpetVertices, 3));
+        carpetGeometry.setAttribute('uv', new THREE.Float32BufferAttribute(carpetUvs, 2));
+        carpetGeometry.setIndex(carpetIndices);
+        carpetGeometry.computeVertexNormals();
+      }
+      
+      // Geometrias das linhas das funções
+      const points1 = [];
+      const points2 = [];
       
       for (let i = 0; i <= segments; i++) {
         const x = effectiveXMin + i * step;
@@ -91,36 +165,11 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
           const scaledY1 = Math.max(-3, Math.min(3, y1 * 0.5));
           const scaledY2 = Math.max(-3, Math.min(3, y2 * 0.5));
           
-          // Pontos das linhas
           points1.push(new THREE.Vector3(scaledX, scaledY1, 0));
           points2.push(new THREE.Vector3(scaledX, scaledY2, 0));
-          
-          // Vértices do tapete - criar uma superfície entre as duas funções
-          carpetVertices.push(scaledX, scaledY1, 0); // Ponto na primeira função
-          carpetVertices.push(scaledX, scaledY2, 0); // Ponto na segunda função
-          
-          // Criar triângulos para conectar os pontos
-          if (i > 0) {
-            const baseIndex = (i * 2) - 2;
-            
-            // Primeiro triângulo
-            carpetIndices.push(baseIndex, baseIndex + 1, baseIndex + 2);
-            // Segundo triângulo
-            carpetIndices.push(baseIndex + 1, baseIndex + 3, baseIndex + 2);
-          }
         }
       }
       
-      // Criar geometria do tapete
-      let carpetGeometry = null;
-      if (carpetVertices.length > 0) {
-        carpetGeometry = new THREE.BufferGeometry();
-        carpetGeometry.setAttribute('position', new THREE.Float32BufferAttribute(carpetVertices, 3));
-        carpetGeometry.setIndex(carpetIndices);
-        carpetGeometry.computeVertexNormals();
-      }
-      
-      // Geometrias das linhas das funções
       const geometry1 = new THREE.BufferGeometry().setFromPoints(points1);
       const geometry2 = new THREE.BufferGeometry().setFromPoints(points2);
       
@@ -186,7 +235,7 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
               <meshStandardMaterial 
                 color="#22c55e" 
                 transparent 
-                opacity={0.6}
+                opacity={0.7}
                 side={THREE.DoubleSide}
                 roughness={0.3}
                 metalness={0.1}
@@ -226,7 +275,7 @@ const Revolution3D = (props: Revolution3DProps) => {
       <div className="absolute top-4 left-4 z-10 text-white">
         <h3 className="text-lg font-semibold">
           {props.showRevolution && !hasSecondFunction ? 'Sólido de Revolução 3D' : 
-           hasSecondFunction ? 'Área 3D entre Funções' : 'Visualização 3D'}
+           hasSecondFunction ? 'Tapete 3D da Área' : 'Visualização 3D'}
         </h3>
         <p className="text-sm text-gray-300">
           f(x) = {props.functionStr}
@@ -243,7 +292,7 @@ const Revolution3D = (props: Revolution3DProps) => {
         )}
         {hasSecondFunction && (
           <p className="text-xs text-gray-400 mt-1">
-            Tapete 3D da área entre funções
+            Tapete 3D da área |f(x) - g(x)|
           </p>
         )}
       </div>

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Area, AreaChart } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Area, ComposedChart } from 'recharts';
 import { evaluateFunction } from '@/utils/mathParser';
 import { calculateAreaBetweenCurves, calculateAreaValue } from '@/utils/areaCalculations';
 
@@ -26,7 +26,8 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
 
     const points = [];
     const range = xMax - xMin;
-    const segments = Math.max(300, Math.min(600, Math.floor(range * 60)));
+    // Reduzir número de segmentos para melhorar performance
+    const segments = Math.max(200, Math.min(400, Math.floor(range * 40)));
     const step = (xMax - xMin) / segments;
     
     for (let i = 0; i <= segments; i++) {
@@ -36,12 +37,12 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
       
       if (!isNaN(y1) && isFinite(y1)) {
         const point: any = { 
-          x: Number(x.toFixed(6)), 
-          y1: Number(y1.toFixed(6))
+          x: Number(x.toFixed(4)), 
+          y1: Number(y1.toFixed(4))
         };
         
         if (y2 !== null && !isNaN(y2) && isFinite(y2)) {
-          point.y2 = Number(y2.toFixed(6));
+          point.y2 = Number(y2.toFixed(4));
         }
         
         points.push(point);
@@ -67,26 +68,35 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
     };
   }, [function1, function2, xMin, xMax, hasSecondFunction]);
 
-  // Gerar dados para a área limitada pelas interseções
+  // Gerar dados otimizados para a área
   const areaChartData = useMemo(() => {
-    if (!areaData) return data;
+    if (!areaData || !hasSecondFunction) return data;
     
-    // Filtrar dados apenas na região entre interseções e calcular área absoluta
     return data.map(point => {
-      if (point.x >= areaData.effectiveXMin && point.x <= areaData.effectiveXMax && point.y2 !== undefined) {
-        // Calcular a área absoluta entre as funções (sempre positiva)
+      if (point.x >= areaData.effectiveXMin && 
+          point.x <= areaData.effectiveXMax && 
+          point.y2 !== undefined) {
+        
+        // Calcular diferença absoluta para área sempre positiva
         const diff = Math.abs(point.y1 - point.y2);
-        const lowerY = Math.min(point.y1, point.y2);
+        const minY = Math.min(point.y1, point.y2);
+        const maxY = Math.max(point.y1, point.y2);
         
         return {
           ...point,
-          areaHeight: diff, // Altura da área (sempre positiva)
-          areaBase: lowerY   // Base da área (pode ser negativa)
+          areaValue: Number(diff.toFixed(4)),
+          areaBase: Number(minY.toFixed(4)),
+          areaTop: Number(maxY.toFixed(4))
         };
       }
-      return point;
+      return {
+        ...point,
+        areaValue: 0,
+        areaBase: 0,
+        areaTop: 0
+      };
     });
-  }, [data, areaData]);
+  }, [data, areaData, hasSecondFunction]);
 
   const { yMin, yMax } = useMemo(() => {
     if (data.length === 0) return { yMin: -5, yMax: 5 };
@@ -204,11 +214,11 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
         </p>
         {hasSecondFunction && areaData && (
           <>
-            <p className="text-xs text-green-600 mt-1">
-              Área entre as curvas: {areaData.areaValue.toFixed(3)} unidades²
+            <p className="text-xs text-green-600 mt-1 font-semibold">
+              Área entre as curvas: {Math.abs(areaData.areaValue).toFixed(3)} unidades²
             </p>
             {areaData.intersections.length > 0 && (
-              <p className="text-xs text-purple-600 mt-1">
+              <p className="text-xs text-purple-600 mt-1 font-semibold">
                 Interseções: {areaData.intersections.map(p => `(${p.x.toFixed(2)}, ${p.y.toFixed(2)})`).join(', ')}
               </p>
             )}
@@ -218,179 +228,135 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
       
       <div className="h-80 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          {hasSecondFunction ? (
-            <AreaChart data={areaChartData} margin={{ top: 5, right: 15, left: 15, bottom: 15 }}>
-              <CartesianGrid strokeDasharray="2 2" stroke="#e0e7ff" />
-              
-              <ReferenceLine y={0} stroke="#9ca3af" strokeWidth={1} />
-              
-              {xMin <= 0 && xMax >= 0 && (
-                <ReferenceLine x={0} stroke="#9ca3af" strokeWidth={1} />
-              )}
-              
-              {[function1, function2].filter(Boolean).some(f => f.includes('sin') || f.includes('cos')) && (
-                <>
-                  <ReferenceLine y={1} stroke="#e5e7eb" strokeWidth={1} strokeDasharray="4 4" />
-                  <ReferenceLine y={-1} stroke="#e5e7eb" strokeWidth={1} strokeDasharray="4 4" />
-                </>
-              )}
-              
-              {/* Linhas de interseção */}
-              {areaData?.intersections.map((intersection, index) => (
+          <ComposedChart data={areaChartData} margin={{ top: 5, right: 15, left: 15, bottom: 15 }}>
+            <CartesianGrid strokeDasharray="2 2" stroke="#e0e7ff" />
+            
+            <ReferenceLine y={0} stroke="#9ca3af" strokeWidth={2} />
+            
+            {xMin <= 0 && xMax >= 0 && (
+              <ReferenceLine x={0} stroke="#9ca3af" strokeWidth={2} />
+            )}
+            
+            {/* Linhas de interseção mais visíveis */}
+            {areaData?.intersections.map((intersection, index) => (
+              <ReferenceLine 
+                key={index}
+                x={intersection.x} 
+                stroke="#8b5cf6" 
+                strokeWidth={3} 
+                strokeDasharray="5 5" 
+              />
+            ))}
+            
+            {/* Limites da área mais visíveis */}
+            {areaData && (
+              <>
                 <ReferenceLine 
-                  key={index}
-                  x={intersection.x} 
-                  stroke="#8b5cf6" 
-                  strokeWidth={2} 
+                  x={areaData.effectiveXMin} 
+                  stroke="#22c55e" 
+                  strokeWidth={3} 
                   strokeDasharray="3 3" 
                 />
-              ))}
-              
-              <XAxis 
-                dataKey="x" 
-                stroke="#6366f1"
-                tick={{ fontSize: 10 }}
-                axisLine={{ stroke: '#6366f1', strokeWidth: 2 }}
-                tickLine={{ stroke: '#6366f1', strokeWidth: 1 }}
-                domain={[xMin, xMax]}
-                type="number"
-                tickFormatter={(value) => formatAxisValue(value, true)}
-                ticks={[xMin, xMin + (xMax-xMin)/4, xMin + (xMax-xMin)/2, xMin + 3*(xMax-xMin)/4, xMax]}
-              />
-              <YAxis 
-                stroke="#6366f1"
-                tick={{ fontSize: 10 }}
-                axisLine={{ stroke: '#6366f1', strokeWidth: 2 }}
-                tickLine={{ stroke: '#6366f1', strokeWidth: 1 }}
-                domain={[yMin, yMax]}
-                tickFormatter={(value) => formatAxisValue(value)}
-                ticks={generateYTicks}
-              />
-              <Tooltip 
-                formatter={(value: number, name: string) => [
-                  formatAxisValue(value), 
-                  name === 'y1' ? 'f(x)' : name === 'y2' ? 'g(x)' : 'Área'
-                ]}
-                labelFormatter={(value: number) => `x = ${formatAxisValue(value, true)}`}
-                contentStyle={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                  border: '1px solid #e0e7ff',
-                  borderRadius: '8px',
-                  fontSize: '10px'
-                }}
-              />
-              
-              {/* Área entre as curvas usando stackedArea customizada */}
-              {areaChartData.map((point, index) => {
-                if (point.areaHeight && point.x >= areaData!.effectiveXMin && point.x <= areaData!.effectiveXMax) {
-                  return (
-                    <Area
-                      key={index}
-                      type="monotone"
-                      dataKey="areaHeight"
-                      stackId="area"
-                      stroke="none"
-                      fill="rgba(34, 197, 94, 0.4)"
-                      fillOpacity={0.6}
-                      baseValue={point.areaBase}
-                    />
-                  );
+                <ReferenceLine 
+                  x={areaData.effectiveXMax} 
+                  stroke="#22c55e" 
+                  strokeWidth={3} 
+                  strokeDasharray="3 3" 
+                />
+              </>
+            )}
+            
+            <XAxis 
+              dataKey="x" 
+              stroke="#6366f1"
+              tick={{ fontSize: 10 }}
+              axisLine={{ stroke: '#6366f1', strokeWidth: 2 }}
+              tickLine={{ stroke: '#6366f1', strokeWidth: 1 }}
+              domain={[xMin, xMax]}
+              type="number"
+              tickFormatter={(value) => formatAxisValue(value, true)}
+              ticks={[xMin, xMin + (xMax-xMin)/4, xMin + (xMax-xMin)/2, xMin + 3*(xMax-xMin)/4, xMax]}
+            />
+            <YAxis 
+              stroke="#6366f1"
+              tick={{ fontSize: 10 }}
+              axisLine={{ stroke: '#6366f1', strokeWidth: 2 }}
+              tickLine={{ stroke: '#6366f1', strokeWidth: 1 }}
+              domain={[yMin, yMax]}
+              tickFormatter={(value) => formatAxisValue(value)}
+              ticks={generateYTicks}
+            />
+            <Tooltip 
+              formatter={(value: any, name: string) => {
+                if (typeof value !== 'number' || !isFinite(value)) {
+                  return ['--', name];
                 }
-                return null;
-              })}
-              
-              {/* Linhas das funções */}
-              <Line 
-                type="monotone" 
-                dataKey="y1" 
-                stroke="#2563eb" 
-                strokeWidth={2.5}
-                dot={false}
-                name="f(x)"
-                strokeOpacity={1}
-                connectNulls={false}
+                
+                if (name === 'areaValue') {
+                  return [formatAxisValue(Math.abs(value)), 'Área'];
+                }
+                
+                return [
+                  formatAxisValue(value), 
+                  name === 'y1' ? 'f(x)' : name === 'y2' ? 'g(x)' : name
+                ];
+              }}
+              labelFormatter={(value: any) => {
+                if (typeof value === 'number') {
+                  return `x = ${formatAxisValue(value, true)}`;
+                }
+                return value;
+              }}
+              contentStyle={{
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                border: '1px solid #e0e7ff',
+                borderRadius: '8px',
+                fontSize: '10px'
+              }}
+            />
+            
+            {/* Área entre as curvas */}
+            {hasSecondFunction && (
+              <Area
+                type="monotone"
+                dataKey="areaValue"
+                stackId="1"
+                stroke="none"
+                fill="rgba(34, 197, 94, 0.3)"
+                fillOpacity={0.7}
               />
-              
+            )}
+            
+            {/* Linhas das funções */}
+            <Line 
+              type="monotone" 
+              dataKey="y1" 
+              stroke="#2563eb" 
+              strokeWidth={3}
+              dot={false}
+              name="f(x)"
+              strokeOpacity={1}
+              connectNulls={false}
+            />
+            
+            {hasSecondFunction && (
               <Line 
                 type="monotone" 
                 dataKey="y2" 
                 stroke="#dc2626" 
-                strokeWidth={2.5}
+                strokeWidth={3}
                 dot={false}
                 name="g(x)"
                 strokeOpacity={1}
                 connectNulls={false}
               />
-            </AreaChart>
-          ) : (
-            <LineChart data={data} margin={{ top: 5, right: 15, left: 15, bottom: 15 }}>
-              <CartesianGrid strokeDasharray="2 2" stroke="#e0e7ff" />
-              
-              <ReferenceLine y={0} stroke="#9ca3af" strokeWidth={1} />
-              
-              {xMin <= 0 && xMax >= 0 && (
-                <ReferenceLine x={0} stroke="#9ca3af" strokeWidth={1} />
-              )}
-              
-              {[function1, function2].filter(Boolean).some(f => f.includes('sin') || f.includes('cos')) && (
-                <>
-                  <ReferenceLine y={1} stroke="#e5e7eb" strokeWidth={1} strokeDasharray="4 4" />
-                  <ReferenceLine y={-1} stroke="#e5e7eb" strokeWidth={1} strokeDasharray="4 4" />
-                </>
-              )}
-              
-              <XAxis 
-                dataKey="x" 
-                stroke="#6366f1"
-                tick={{ fontSize: 10 }}
-                axisLine={{ stroke: '#6366f1', strokeWidth: 2 }}
-                tickLine={{ stroke: '#6366f1', strokeWidth: 1 }}
-                domain={[xMin, xMax]}
-                type="number"
-                tickFormatter={(value) => formatAxisValue(value, true)}
-                ticks={[xMin, xMin + (xMax-xMin)/4, xMin + (xMax-xMin)/2, xMin + 3*(xMax-xMin)/4, xMax]}
-              />
-              <YAxis 
-                stroke="#6366f1"
-                tick={{ fontSize: 10 }}
-                axisLine={{ stroke: '#6366f1', strokeWidth: 2 }}
-                tickLine={{ stroke: '#6366f1', strokeWidth: 1 }}
-                domain={[yMin, yMax]}
-                tickFormatter={(value) => formatAxisValue(value)}
-                ticks={generateYTicks}
-              />
-              <Tooltip 
-                formatter={(value: number, name: string) => [
-                  formatAxisValue(value), 
-                  name === 'y1' ? 'f(x)' : 'g(x)'
-                ]}
-                labelFormatter={(value: number) => `x = ${formatAxisValue(value, true)}`}
-                contentStyle={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                  border: '1px solid #e0e7ff',
-                  borderRadius: '8px',
-                  fontSize: '10px'
-                }}
-              />
-              
-              {/* Primeira função */}
-              <Line 
-                type="monotone" 
-                dataKey="y1" 
-                stroke="#2563eb" 
-                strokeWidth={2.5}
-                dot={false}
-                name="f(x)"
-                strokeOpacity={1}
-                connectNulls={false}
-              />
-            </LineChart>
-          )}
+            )}
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
       
       <div className="mt-1 text-xs text-gray-500 text-center">
-        {hasSecondFunction ? 'Área entre funções delimitada pelas interseções' : 'Visualização da função matemática'}
+        {hasSecondFunction ? 'Área entre funções (sempre em módulo) delimitada pelas interseções' : 'Visualização da função matemática'}
       </div>
     </div>
   );
