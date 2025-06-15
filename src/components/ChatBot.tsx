@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Send, Bot, User, Loader2 } from 'lucide-react';
-import { getChatResponse } from '@/services/openaiService';
+import { getChatResponse } from '@/services/geminiService';
 
 interface Message {
   id: number;
@@ -17,7 +16,7 @@ const ChatBot = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
-      text: "Olá! Sou seu assistente de matemática powered by OpenAI. Posso ajudar você com questões sobre funções, cálculo e sólidos de revolução. Como posso ajudar?",
+      text: "Olá! Sou seu assistente de matemática powered by Gemini. Posso ajudar você com questões sobre funções, cálculo e sólidos de revolução. Como posso ajudar?",
       isBot: true,
       timestamp: new Date()
     }
@@ -81,7 +80,7 @@ const ChatBot = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Bot className="h-5 w-5 text-blue-600" />
-          Assistente de Matemática - OpenAI
+          Assistente de Matemática - Gemini
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col h-80">
@@ -126,7 +125,7 @@ const ChatBot = () => {
           <Input
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSendMessage()}
             placeholder="Digite sua pergunta sobre matemática..."
             className="flex-1"
             disabled={isLoading}

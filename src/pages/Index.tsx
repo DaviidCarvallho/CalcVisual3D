@@ -7,13 +7,15 @@ import Revolution3D from '@/components/Revolution3D';
 import ChatBot from '@/components/ChatBot';
 
 const Index = () => {
-  const [functionStr, setFunctionStr] = useState('x^2');
+  const [function1, setFunction1] = useState('x^2');
+  const [function2, setFunction2] = useState<string | null>(null);
   const [xMin, setXMin] = useState(-3);
   const [xMax, setXMax] = useState(3);
   const [showRevolution, setShowRevolution] = useState(false);
 
-  const handleFunctionChange = (func: string, min: number, max: number) => {
-    setFunctionStr(func);
+  const handleFunctionChange = (func1: string, func2: string | null, min: number, max: number) => {
+    setFunction1(func1);
+    setFunction2(func2);
     setXMin(min);
     setXMax(max);
     setShowRevolution(false);
@@ -43,8 +45,13 @@ const Index = () => {
               </h3>
               <div className="space-y-3 text-sm text-indigo-700">
                 <div>
-                  <strong>Função atual:</strong> f(x) = {functionStr}
+                  <strong>Função principal:</strong> f(x) = {function1}
                 </div>
+                {function2 && (
+                  <div>
+                    <strong>Segunda função:</strong> g(x) = {function2}
+                  </div>
+                )}
                 <div>
                   <strong>Domínio:</strong> [{xMin}, {xMax}]
                 </div>
@@ -53,8 +60,13 @@ const Index = () => {
                     <strong>Volume do sólido:</strong> V = π∫[{xMin},{xMax}] [f(x)]² dx
                   </div>
                 )}
+                {function2 && (
+                  <div>
+                    <strong>Área entre funções:</strong> A = ∫[{xMin},{xMax}] |f(x) - g(x)| dx
+                  </div>
+                )}
                 <div className="pt-2 text-xs text-indigo-600">
-                  💡 <strong>Dica:</strong> Experimente funções como sin(x), x^3, sqrt(x) ou exp(x)
+                  💡 <strong>Dica:</strong> Experimente funções como x^2 + 2*x + 1, sin(x), x^3 - 3*x
                 </div>
               </div>
             </div>
@@ -64,14 +76,15 @@ const Index = () => {
           <div className="lg:col-span-2 space-y-6">
             {/* Gráfico 2D */}
             <Chart2D
-              functionStr={functionStr}
+              function1={function1}
+              function2={function2}
               xMin={xMin}
               xMax={xMax}
             />
 
             {/* Visualização 3D */}
             <Revolution3D
-              functionStr={functionStr}
+              functionStr={function1}
               xMin={xMin}
               xMax={xMax}
               showRevolution={showRevolution}
