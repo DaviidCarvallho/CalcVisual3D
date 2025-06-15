@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { evaluateFunction } from '@/utils/mathParser';
 
 interface Chart2DProps {
@@ -53,7 +53,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
 
   const hasSecondFunction = function2 && function2.trim() !== '';
 
-  // Calcular limites dos eixos Y dinamicamente
+  // Calcular limites dos eixos Y dinamicamente, sempre incluindo o zero
   const { yMin, yMax } = useMemo(() => {
     if (data.length === 0) return { yMin: -5, yMax: 5 };
     
@@ -63,8 +63,8 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
       return values;
     });
     
-    const min = Math.min(...allYValues);
-    const max = Math.max(...allYValues);
+    const min = Math.min(...allYValues, 0); // Sempre incluir o zero
+    const max = Math.max(...allYValues, 0); // Sempre incluir o zero
     const range = max - min || 1;
     const padding = range * 0.1;
     
@@ -102,117 +102,68 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
       
       <div className="h-80 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          {hasSecondFunction ? (
-            <AreaChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="2 2" stroke="#e0e7ff" />
-              <XAxis 
-                dataKey="x" 
-                stroke="#6366f1"
-                tick={{ fontSize: 12 }}
-                axisLine={{ stroke: '#6366f1' }}
-                tickLine={{ stroke: '#6366f1' }}
-                domain={[xMin, xMax]}
-                type="number"
-                tickFormatter={(value) => value.toFixed(1)}
-              />
-              <YAxis 
-                stroke="#6366f1"
-                tick={{ fontSize: 12 }}
-                axisLine={{ stroke: '#6366f1' }}
-                tickLine={{ stroke: '#6366f1' }}
-                domain={[yMin, yMax]}
-                tickFormatter={(value) => value.toFixed(1)}
-              />
-              <Tooltip 
-                formatter={(value: number, name: string) => [
-                  value.toFixed(3), 
-                  name === 'y1' ? 'f(x)' : 'g(x)'
-                ]}
-                labelFormatter={(value: number) => `x = ${value.toFixed(3)}`}
-                contentStyle={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                  border: '1px solid #e0e7ff',
-                  borderRadius: '8px'
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="y1"
-                stackId="1"
-                stroke="rgba(37, 99, 235, 0.1)"
-                fill="rgba(37, 99, 235, 0.1)"
-                fillOpacity={0.3}
-              />
-              <Area
-                type="monotone"
-                dataKey="y2"
-                stackId="2"
-                stroke="rgba(220, 38, 38, 0.1)"
-                fill="rgba(220, 38, 38, 0.1)"
-                fillOpacity={0.3}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="y1" 
-                stroke="#2563eb" 
-                strokeWidth={3}
-                dot={false}
-                name="f(x)"
-              />
+          <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+            <CartesianGrid strokeDasharray="2 2" stroke="#e0e7ff" />
+            <XAxis 
+              dataKey="x" 
+              stroke="#6366f1"
+              tick={{ fontSize: 12 }}
+              axisLine={{ stroke: '#6366f1' }}
+              tickLine={{ stroke: '#6366f1' }}
+              domain={[xMin, xMax]}
+              type="number"
+              tickFormatter={(value) => value.toFixed(1)}
+            />
+            <YAxis 
+              stroke="#6366f1"
+              tick={{ fontSize: 12 }}
+              axisLine={{ stroke: '#6366f1' }}
+              tickLine={{ stroke: '#6366f1' }}
+              domain={[yMin, yMax]}
+              tickFormatter={(value) => value.toFixed(1)}
+            />
+            <Tooltip 
+              formatter={(value: number, name: string) => [
+                value.toFixed(3), 
+                name === 'y1' ? 'f(x)' : 'g(x)'
+              ]}
+              labelFormatter={(value: number) => `x = ${value.toFixed(3)}`}
+              contentStyle={{
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                border: '1px solid #e0e7ff',
+                borderRadius: '8px'
+              }}
+            />
+            
+            {/* Primeira função - sempre presente */}
+            <Line 
+              type="monotone" 
+              dataKey="y1" 
+              stroke="#2563eb" 
+              strokeWidth={2.5}
+              dot={false}
+              name="f(x)"
+              strokeOpacity={0.9}
+            />
+            
+            {/* Segunda função - apenas se existir */}
+            {hasSecondFunction && (
               <Line 
                 type="monotone" 
                 dataKey="y2" 
                 stroke="#dc2626" 
-                strokeWidth={3}
+                strokeWidth={2.5}
                 dot={false}
                 name="g(x)"
+                strokeOpacity={0.9}
               />
-            </AreaChart>
-          ) : (
-            <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="2 2" stroke="#e0e7ff" />
-              <XAxis 
-                dataKey="x" 
-                stroke="#6366f1"
-                tick={{ fontSize: 12 }}
-                axisLine={{ stroke: '#6366f1' }}
-                tickLine={{ stroke: '#6366f1' }}
-                domain={[xMin, xMax]}
-                type="number"
-                tickFormatter={(value) => value.toFixed(1)}
-              />
-              <YAxis 
-                stroke="#6366f1"
-                tick={{ fontSize: 12 }}
-                axisLine={{ stroke: '#6366f1' }}
-                tickLine={{ stroke: '#6366f1' }}
-                domain={[yMin, yMax]}
-                tickFormatter={(value) => value.toFixed(1)}
-              />
-              <Tooltip 
-                formatter={(value: number) => [value.toFixed(3), 'f(x)']}
-                labelFormatter={(value: number) => `x = ${value.toFixed(3)}`}
-                contentStyle={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                  border: '1px solid #e0e7ff',
-                  borderRadius: '8px'
-                }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="y1" 
-                stroke="#2563eb" 
-                strokeWidth={3}
-                dot={false}
-                name="f(x)"
-              />
-            </LineChart>
-          )}
+            )}
+          </LineChart>
         </ResponsiveContainer>
       </div>
       
       <div className="mt-2 text-xs text-gray-500 text-center">
-        {hasSecondFunction ? 'Visualização de duas funções com áreas destacadas' : 'Gráfico da função matemática'}
+        {hasSecondFunction ? 'Visualização de duas funções matemáticas' : 'Gráfico da função matemática'}
       </div>
     </div>
   );
