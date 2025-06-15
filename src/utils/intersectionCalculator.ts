@@ -14,10 +14,11 @@ export const findIntersections = (
   tolerance: number = 0.001
 ): IntersectionPoint[] => {
   const intersections: IntersectionPoint[] = [];
-  const segments = 1000;
+  const segments = 2000; // Aumentar precisão
   const step = (xMax - xMin) / segments;
   
   let prevDiff = null;
+  let prevX = null;
   
   for (let i = 0; i <= segments; i++) {
     const x = xMin + i * step;
@@ -28,24 +29,42 @@ export const findIntersections = (
       const diff = y1 - y2;
       
       // Detectar mudança de sinal (interseção)
-      if (prevDiff !== null && Math.sign(diff) !== Math.sign(prevDiff) && Math.abs(diff) > tolerance) {
-        // Usar bisseção para refinar a interseção
-        const refinedX = refineBisection(function1, function2, x - step, x, tolerance);
-        const refinedY = evaluateFunction(function1, refinedX);
+      if (prevDiff !== null && prevX !== null) {
+        const signChanged = Math.sign(diff) !== Math.sign(prevDiff);
+        const significantDiff = Math.abs(diff) > tolerance || Math.abs(prevDiff) > tolerance;
         
-        if (!isNaN(refinedY) && isFinite(refinedY)) {
-          intersections.push({
-            x: Number(refinedX.toFixed(6)),
-            y: Number(refinedY.toFixed(6))
-          });
+        if (signChanged && significantDiff) {
+          // Usar bisseção para refinar a interseção
+          const refinedX = refineBisection(function1, function2, prevX, x, tolerance);
+          const refinedY = evaluateFunction(function1, refinedX);
+          
+          if (!isNaN(refinedY) && isFinite(refinedY)) {
+            intersections.push({
+              x: Number(refinedX.toFixed(6)),
+              y: Number(refinedY.toFixed(6))
+            });
+          }
         }
       }
       
       prevDiff = diff;
+      prevX = x;
     }
   }
   
-  return intersections;
+  // Remover interseções muito próximas (duplicatas)
+  const filteredIntersections = [];
+  for (const intersection of intersections) {
+    const isDuplicate = filteredIntersections.some(existing => 
+      Math.abs(existing.x - intersection.x) < 0.01
+    );
+    if (!isDuplicate) {
+      filteredIntersections.push(intersection);
+    }
+  }
+  
+  console.log('Interseções encontradas:', filteredIntersections);
+  return filteredIntersections;
 };
 
 const refineBisection = (
@@ -54,7 +73,7 @@ const refineBisection = (
   xStart: number,
   xEnd: number,
   tolerance: number,
-  maxIterations: number = 50
+  maxIterations: number = 100
 ): number => {
   let left = xStart;
   let right = xEnd;
@@ -77,6 +96,11 @@ const refineBisection = (
       left = mid;
     } else {
       right = mid;
+    }
+    
+    // Evitar loop infinito
+    if (Math.abs(right - left) < tolerance) {
+      break;
     }
   }
   

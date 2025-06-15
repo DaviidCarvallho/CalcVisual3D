@@ -1,4 +1,3 @@
-
 import React, { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text, Grid } from '@react-three/drei';
@@ -63,21 +62,22 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
       
       return { geometry, secondGeometry: null, regionGeometry: null };
     } else if (hasSecondFunction) {
-      // Usar limites das interseções para criar a região 3D
+      // Criar sólido de revolução da área entre as duas funções
       const areaResult = calculateAreaBetweenCurves(functionStr, function2, xMin, xMax);
       const effectiveXMin = areaResult.effectiveXMin;
       const effectiveXMax = areaResult.effectiveXMax;
       
-      console.log('Limites efetivos para região 3D:', effectiveXMin, effectiveXMax);
+      console.log('Criando sólido de revolução para área entre funções:', effectiveXMin, effectiveXMax);
       
       const segments = 100;
       const step = (effectiveXMax - effectiveXMin) / segments;
       
-      // Pontos para as duas funções
+      // Pontos para as duas funções (apenas para linhas)
       const points1 = [];
       const points2 = [];
-      const vertices = [];
-      const faces = [];
+      
+      // Pontos para o sólido de revolução da área
+      const revolutionPoints = [];
       
       for (let i = 0; i <= segments; i++) {
         const x = effectiveXMin + i * step;
@@ -89,37 +89,35 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
           const scaledY1 = Math.max(-3, Math.min(3, y1 * 0.5));
           const scaledY2 = Math.max(-3, Math.min(3, y2 * 0.5));
           
+          // Pontos das linhas
           points1.push(new THREE.Vector3(scaledX, scaledY1, 0));
           points2.push(new THREE.Vector3(scaledX, scaledY2, 0));
           
-          // Criar vertices para a malha da região
-          vertices.push(scaledX, scaledY1, -0.1);  // função 1 - frente
-          vertices.push(scaledX, scaledY2, -0.1);  // função 2 - frente
-          vertices.push(scaledX, scaledY1, 0.1);   // função 1 - trás
-          vertices.push(scaledX, scaledY2, 0.1);   // função 2 - trás
+          // Para o sólido de revolução, usar a diferença entre as funções
+          const upperY = Math.max(y1, y2);
+          const lowerY = Math.min(y1, y2);
+          const heightDiff = Math.abs(upperY - lowerY);
+          
+          // Criar pontos para o sólido de revolução baseado na altura da área
+          if (heightDiff > 0.01) {
+            const scaledHeight = Math.min(2, heightDiff * 0.3);
+            const zPosition = scaledX;
+            revolutionPoints.push(new THREE.Vector2(scaledHeight, zPosition));
+          }
         }
       }
       
-      // Criar faces para conectar os pontos
-      for (let i = 0; i < (vertices.length / 12) - 1; i++) {
-        const base = i * 4;
-        // Face frontal
-        faces.push(base, base + 1, base + 4);
-        faces.push(base + 1, base + 5, base + 4);
-        // Face traseira
-        faces.push(base + 2, base + 6, base + 3);
-        faces.push(base + 3, base + 6, base + 7);
-        // Conectar frente e trás
-        faces.push(base, base + 4, base + 2);
-        faces.push(base + 2, base + 4, base + 6);
-        faces.push(base + 1, base + 3, base + 5);
-        faces.push(base + 3, base + 7, base + 5);
+      // Criar geometria do sólido de revolução
+      let revolutionGeometry = null;
+      if (revolutionPoints.length > 2) {
+        // Adicionar pontos de fechamento
+        const firstPoint = revolutionPoints[0];
+        const lastPoint = revolutionPoints[revolutionPoints.length - 1];
+        revolutionPoints.unshift(new THREE.Vector2(0.01, firstPoint.y));
+        revolutionPoints.push(new THREE.Vector2(0.01, lastPoint.y));
+        
+        revolutionGeometry = new THREE.LatheGeometry(revolutionPoints, 32);
       }
-      
-      const regionGeometry = new THREE.BufferGeometry();
-      regionGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-      regionGeometry.setIndex(faces);
-      regionGeometry.computeVertexNormals();
       
       // Geometrias das linhas das funções
       const geometry1 = new THREE.BufferGeometry().setFromPoints(points1);
@@ -128,7 +126,7 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
       return { 
         geometry: geometry1, 
         secondGeometry: geometry2, 
-        regionGeometry: regionGeometry 
+        regionGeometry: revolutionGeometry 
       };
     } else {
       // Representação 2D de uma função no espaço 3D
@@ -161,8 +159,8 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
     if (meshRef.current && showRevolution && !hasSecondFunction) {
       meshRef.current.rotation.y += 0.005;
     }
-    if (groupRef.current && hasSecondFunction) {
-      groupRef.current.rotation.y += 0.002;
+    if (groupRef.current && hasSecondFunction && regionGeometry) {
+      groupRef.current.rotation.y += 0.003;
     }
   });
 
@@ -181,16 +179,16 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
         </mesh>
       ) : hasSecondFunction ? (
         <>
-          {/* Região entre as funções */}
+          {/* Sólido de revolução da área entre as funções */}
           {regionGeometry && (
-            <mesh geometry={regionGeometry} position={[0, 0, 0]}>
+            <mesh ref={meshRef} geometry={regionGeometry} position={[0, 0, 0]}>
               <meshStandardMaterial 
                 color="#22c55e" 
                 transparent 
                 opacity={0.7}
                 side={THREE.DoubleSide}
                 roughness={0.3}
-                metalness={0.0}
+                metalness={0.1}
               />
             </mesh>
           )}
