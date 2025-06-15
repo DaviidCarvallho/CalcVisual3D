@@ -1,4 +1,6 @@
 
+import { evaluate, parse, format } from 'mathjs';
+
 export const parseMathFunction = (functionStr: string): string => {
   // Validar se functionStr existe e não é undefined
   if (!functionStr || typeof functionStr !== 'string') {
@@ -6,49 +8,19 @@ export const parseMathFunction = (functionStr: string): string => {
     return 'x'; // Retorna uma função padrão simples
   }
 
-  // Normalizar a função para JavaScript
+  // Normalizar a função para o formato aceito pelo mathjs
   let expr = functionStr
     .toLowerCase()
     .trim()
-    // Substituir operadores matemáticos primeiro
-    .replace(/\^/g, '**')
-    // Substituir funções matemáticas com parênteses
-    .replace(/\bsin\s*\(/g, 'Math.sin(')
-    .replace(/\bcos\s*\(/g, 'Math.cos(')
-    .replace(/\btan\s*\(/g, 'Math.tan(')
-    .replace(/\bexp\s*\(/g, 'Math.exp(')
-    .replace(/\blog\s*\(/g, 'Math.log(')
-    .replace(/\bln\s*\(/g, 'Math.log(')
-    .replace(/\bsqrt\s*\(/g, 'Math.sqrt(')
-    .replace(/\babs\s*\(/g, 'Math.abs(')
-    // Tratar funções sem parênteses (como sin x, cos x)
-    .replace(/\bsin\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.sin($1)')
-    .replace(/\bcos\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.cos($1)')
-    .replace(/\btan\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.tan($1)')
-    .replace(/\bexp\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.exp($1)')
-    .replace(/\bsqrt\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.sqrt($1)')
-    .replace(/\babs\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.abs($1)')
-    .replace(/\blog\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.log($1)')
-    // Substituir constantes matemáticas
-    .replace(/\bpi\b/g, 'Math.PI')
-    .replace(/\be\b/g, 'Math.E')
-    // Substituir notações especiais
-    .replace(/x²/g, 'x**2')
-    .replace(/x³/g, 'x**3')
-    // Adicionar multiplicação implícita DEPOIS das funções matemáticas
-    // Evitar interferir com Math.sin, Math.cos, etc.
-    .replace(/(\d+)([a-z])/g, (match, num, letter) => {
-      // Não adicionar * se for parte de Math.algo
-      if (letter === 'h' && expr.substring(expr.indexOf(match) - 4, expr.indexOf(match)) === 'Mat') {
-        return match; // Não modificar Math.algo
-      }
-      return `${num}*${letter}`;
-    })
-    .replace(/([a-z])(\d+)/g, '$1*$2')
-    .replace(/\)([a-z])/g, ')*$1')
-    .replace(/([a-z])\(/g, '$1*(')
-    .replace(/(\d+)\(/g, '$1*(')
-    .replace(/\)(\d+)/g, ')*$1');
+    // Substituir notações especiais antes de processar
+    .replace(/x²/g, 'x^2')
+    .replace(/x³/g, 'x^3')
+    // Substituir ln por log (mathjs usa log para logaritmo natural)
+    .replace(/\bln\s*\(/g, 'log(')
+    .replace(/\bln\s+/g, 'log ')
+    // Garantir que pi e e sejam reconhecidos
+    .replace(/\bpi\b/g, 'pi')
+    .replace(/\be\b/g, 'e');
   
   console.log('Função parseada:', functionStr, '->', expr);
   return expr;
@@ -67,10 +39,11 @@ export const evaluateFunction = (functionStr: string, x: number): number => {
       return NaN;
     }
 
-    const expr = parseMathFunction(functionStr).replace(/x/g, `(${x})`);
-    console.log('Expressão a ser avaliada:', expr, 'para x =', x);
+    const expr = parseMathFunction(functionStr);
+    console.log('Avaliando expressão:', expr, 'para x =', x);
     
-    const result = eval(expr);
+    // Usar mathjs para avaliar a expressão
+    const result = evaluate(expr, { x: x });
     
     // Validar resultado
     if (typeof result !== 'number') {
