@@ -62,7 +62,7 @@ const Index = () => {
                 <div>
                   <strong>Domínio:</strong> {getDomainText()}
                 </div>
-                {showRevolution && (
+                {showRevolution && !function2 && (
                   <div>
                     <strong>Volume do sólido:</strong> V = π∫[{xMin.toFixed(1)},{xMax.toFixed(1)}] [f(x)]² dx
                   </div>
@@ -73,7 +73,7 @@ const Index = () => {
                   </div>
                 )}
                 <div className="pt-2 text-xs text-indigo-600">
-                  💡 <strong>Dica:</strong> Experimente funções como sin(x), exp(x), x^3 - 3*x, sqrt(x)
+                  💡 <strong>Dica:</strong> {function2 ? 'Visualize a área colorida entre as duas funções!' : 'Experimente funções como sin(x), exp(x), x^3 - 3*x, sqrt(x)'}
                 </div>
               </div>
             </div>
@@ -92,6 +92,7 @@ const Index = () => {
             {/* Visualização 3D */}
             <Revolution3D
               functionStr={function1}
+              function2={function2}
               xMin={xMin}
               xMax={xMax}
               showRevolution={showRevolution}

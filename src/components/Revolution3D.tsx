@@ -7,18 +7,23 @@ import { evaluateFunction } from '@/utils/mathParser';
 
 interface Revolution3DProps {
   functionStr: string;
+  function2?: string | null;
   xMin: number;
   xMax: number;
   showRevolution: boolean;
 }
 
-const RevolutionMesh = ({ functionStr, xMin, xMax, showRevolution }: Revolution3DProps) => {
+const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revolution3DProps) => {
   const meshRef = useRef<THREE.Mesh>(null);
+  const groupRef = useRef<THREE.Group>(null);
 
-  const { geometry, isLine } = useMemo(() => {
-    if (showRevolution) {
+  const hasSecondFunction = function2 && function2.trim() !== '';
+
+  const { geometry, secondGeometry, regionGeometry } = useMemo(() => {
+    if (showRevolution && !hasSecondFunction) {
+      // Lógica original para sólido de revolução de uma função
       const points = [];
-      const segments = 100; // Reduzir para melhor performance
+      const segments = 100;
       const step = (xMax - xMin) / segments;
 
       const functionPoints = [];
@@ -54,10 +59,72 @@ const RevolutionMesh = ({ functionStr, xMin, xMax, showRevolution }: Revolution3
       }
 
       const geometry = new THREE.LatheGeometry(points, 32);
-      geometry.translate(0, 0, 0);
       
-      return { geometry, isLine: false };
+      return { geometry, secondGeometry: null, regionGeometry: null };
+    } else if (hasSecondFunction) {
+      // Criar representação 3D da região entre duas funções
+      const segments = 100;
+      const step = (xMax - xMin) / segments;
+      
+      // Pontos para as duas funções
+      const points1 = [];
+      const points2 = [];
+      const vertices = [];
+      const faces = [];
+      
+      for (let i = 0; i <= segments; i++) {
+        const x = xMin + i * step;
+        const y1 = evaluateFunction(functionStr, x);
+        const y2 = evaluateFunction(function2, x);
+        
+        if (!isNaN(y1) && !isNaN(y2) && isFinite(y1) && isFinite(y2)) {
+          const scaledX = (x - xMin) / (xMax - xMin) * 4 - 2;
+          const scaledY1 = Math.max(-3, Math.min(3, y1 * 0.5));
+          const scaledY2 = Math.max(-3, Math.min(3, y2 * 0.5));
+          
+          points1.push(new THREE.Vector3(scaledX, scaledY1, 0));
+          points2.push(new THREE.Vector3(scaledX, scaledY2, 0));
+          
+          // Criar vertices para a malha da região
+          vertices.push(scaledX, scaledY1, -0.1);  // função 1 - frente
+          vertices.push(scaledX, scaledY2, -0.1);  // função 2 - frente
+          vertices.push(scaledX, scaledY1, 0.1);   // função 1 - trás
+          vertices.push(scaledX, scaledY2, 0.1);   // função 2 - trás
+        }
+      }
+      
+      // Criar faces para conectar os pontos
+      for (let i = 0; i < (vertices.length / 12) - 1; i++) {
+        const base = i * 4;
+        // Face frontal
+        faces.push(base, base + 1, base + 4);
+        faces.push(base + 1, base + 5, base + 4);
+        // Face traseira
+        faces.push(base + 2, base + 6, base + 3);
+        faces.push(base + 3, base + 6, base + 7);
+        // Conectar frente e trás
+        faces.push(base, base + 4, base + 2);
+        faces.push(base + 2, base + 4, base + 6);
+        faces.push(base + 1, base + 3, base + 5);
+        faces.push(base + 3, base + 7, base + 5);
+      }
+      
+      const regionGeometry = new THREE.BufferGeometry();
+      regionGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+      regionGeometry.setIndex(faces);
+      regionGeometry.computeVertexNormals();
+      
+      // Geometrias das linhas das funções
+      const geometry1 = new THREE.BufferGeometry().setFromPoints(points1);
+      const geometry2 = new THREE.BufferGeometry().setFromPoints(points2);
+      
+      return { 
+        geometry: geometry1, 
+        secondGeometry: geometry2, 
+        regionGeometry: regionGeometry 
+      };
     } else {
+      // Representação 2D de uma função no espaço 3D
       const points = [];
       const segments = 150;
       const step = (xMax - xMin) / segments;
@@ -79,19 +146,22 @@ const RevolutionMesh = ({ functionStr, xMin, xMax, showRevolution }: Revolution3
       }
 
       const geometry = new THREE.BufferGeometry().setFromPoints(points);
-      return { geometry, isLine: true };
+      return { geometry, secondGeometry: null, regionGeometry: null };
     }
-  }, [functionStr, xMin, xMax, showRevolution]);
+  }, [functionStr, function2, xMin, xMax, showRevolution, hasSecondFunction]);
 
   useFrame(() => {
-    if (meshRef.current && showRevolution) {
+    if (meshRef.current && showRevolution && !hasSecondFunction) {
       meshRef.current.rotation.y += 0.005;
+    }
+    if (groupRef.current && hasSecondFunction) {
+      groupRef.current.rotation.y += 0.002;
     }
   });
 
   return (
-    <>
-      {showRevolution ? (
+    <group ref={groupRef}>
+      {showRevolution && !hasSecondFunction ? (
         <mesh ref={meshRef} geometry={geometry} position={[0, 0, 0]}>
           <meshStandardMaterial 
             color="#3b82f6" 
@@ -102,29 +172,72 @@ const RevolutionMesh = ({ functionStr, xMin, xMax, showRevolution }: Revolution3
             metalness={0.1}
           />
         </mesh>
+      ) : hasSecondFunction ? (
+        <>
+          {/* Região entre as funções */}
+          {regionGeometry && (
+            <mesh geometry={regionGeometry} position={[0, 0, 0]}>
+              <meshStandardMaterial 
+                color="#22c55e" 
+                transparent 
+                opacity={0.6}
+                side={THREE.DoubleSide}
+                roughness={0.3}
+                metalness={0.0}
+              />
+            </mesh>
+          )}
+          
+          {/* Linha da primeira função */}
+          <primitive object={new THREE.Line(geometry, new THREE.LineBasicMaterial({ 
+            color: "#3b82f6", 
+            linewidth: 3 
+          }))} />
+          
+          {/* Linha da segunda função */}
+          {secondGeometry && (
+            <primitive object={new THREE.Line(secondGeometry, new THREE.LineBasicMaterial({ 
+              color: "#dc2626", 
+              linewidth: 3 
+            }))} />
+          )}
+        </>
       ) : (
         <primitive object={new THREE.Line(geometry, new THREE.LineBasicMaterial({ 
           color: "#3b82f6", 
           linewidth: 3 
         }))} />
       )}
-    </>
+    </group>
   );
 };
 
 const Revolution3D = (props: Revolution3DProps) => {
+  const hasSecondFunction = props.function2 && props.function2.trim() !== '';
+  
   return (
     <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700 h-96 relative">
       <div className="absolute top-4 left-4 z-10 text-white">
         <h3 className="text-lg font-semibold">
-          {props.showRevolution ? 'Sólido de Revolução 3D' : 'Visualização 3D'}
+          {props.showRevolution && !hasSecondFunction ? 'Sólido de Revolução 3D' : 
+           hasSecondFunction ? 'Região 3D entre Funções' : 'Visualização 3D'}
         </h3>
         <p className="text-sm text-gray-300">
           f(x) = {props.functionStr}
         </p>
-        {props.showRevolution && (
+        {hasSecondFunction && (
+          <p className="text-sm text-gray-300">
+            g(x) = {props.function2}
+          </p>
+        )}
+        {props.showRevolution && !hasSecondFunction && (
           <p className="text-xs text-gray-400 mt-1">
             Rotação em torno do eixo X
+          </p>
+        )}
+        {hasSecondFunction && (
+          <p className="text-xs text-gray-400 mt-1">
+            Região entre as curvas
           </p>
         )}
       </div>
@@ -141,7 +254,7 @@ const Revolution3D = (props: Revolution3DProps) => {
           intensity={0.6}
         />
         
-        <RevolutionMesh {...props} />
+        <RegionMesh {...props} />
         
         <Grid 
           args={[12, 12]} 
