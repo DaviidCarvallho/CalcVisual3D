@@ -12,22 +12,23 @@ export const parseMathFunction = (functionStr: string): string => {
     .trim()
     // Substituir operadores matemáticos primeiro
     .replace(/\^/g, '**')
-    // Substituir funções trigonométricas - mais específico
+    // Substituir funções matemáticas - CORRIGIDO: sem * após o nome da função
     .replace(/\bsin\s*\(/g, 'Math.sin(')
     .replace(/\bcos\s*\(/g, 'Math.cos(')
     .replace(/\btan\s*\(/g, 'Math.tan(')
-    // Substituir outras funções matemáticas
     .replace(/\bexp\s*\(/g, 'Math.exp(')
     .replace(/\blog\s*\(/g, 'Math.log(')
     .replace(/\bln\s*\(/g, 'Math.log(')
     .replace(/\bsqrt\s*\(/g, 'Math.sqrt(')
     .replace(/\babs\s*\(/g, 'Math.abs(')
-    // Tratar funções sem parênteses (como sin x, cos x)
+    // Tratar funções sem parênteses (como sin x, cos x) - CORRIGIDO
     .replace(/\bsin\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.sin($1)')
     .replace(/\bcos\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.cos($1)')
     .replace(/\btan\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.tan($1)')
     .replace(/\bexp\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.exp($1)')
     .replace(/\bsqrt\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.sqrt($1)')
+    .replace(/\babs\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.abs($1)')
+    .replace(/\blog\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.log($1)')
     // Adicionar multiplicação implícita
     .replace(/(\d+)([a-z])/g, '$1*$2')
     .replace(/([a-z])(\d+)/g, '$1*$2')
@@ -60,11 +61,18 @@ export const evaluateFunction = (functionStr: string, x: number): number => {
     }
 
     const expr = parseMathFunction(functionStr).replace(/x/g, `(${x})`);
+    console.log('Expressão a ser avaliada:', expr, 'para x =', x);
+    
     const result = eval(expr);
     
     // Validar resultado
     if (typeof result !== 'number') {
       console.error('evaluateFunction: resultado não é um número:', result);
+      return NaN;
+    }
+    
+    // Verificar se o resultado é finito (evitar infinitos que quebram o gráfico)
+    if (!isFinite(result)) {
       return NaN;
     }
     
