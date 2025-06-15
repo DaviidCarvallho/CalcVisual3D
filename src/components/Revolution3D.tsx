@@ -1,3 +1,4 @@
+
 import React, { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text, Grid } from '@react-three/drei';
@@ -197,11 +198,11 @@ const RegionMesh = ({
           {showRevolution ? (
             // Renderizar sólidos de revolução
             <>
-              {/* Superfície externa do sólido */}
-              {solidGeometry && showBlueSurface && (
+              {/* Superfície externa do sólido - VERMELHA */}
+              {solidGeometry && showRedSurface && (
                 <mesh geometry={solidGeometry} position={[0, 0, 0]}>
                   <meshStandardMaterial 
-                    color="#3b82f6" 
+                    color="#dc2626" 
                     transparent 
                     opacity={0.7}
                     side={THREE.DoubleSide}
@@ -211,11 +212,11 @@ const RegionMesh = ({
                 </mesh>
               )}
               
-              {/* Superfície interna do sólido (cavidade) */}
-              {innerSolidGeometry && showRedSurface && (
+              {/* Superfície interna do sólido (cavidade) - AZUL */}
+              {innerSolidGeometry && showBlueSurface && (
                 <mesh geometry={innerSolidGeometry} position={[0, 0, 0]}>
                   <meshStandardMaterial 
-                    color="#dc2626" 
+                    color="#3b82f6" 
                     transparent 
                     opacity={0.6}
                     side={THREE.BackSide}

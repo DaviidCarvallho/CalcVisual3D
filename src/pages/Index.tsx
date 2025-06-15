@@ -62,20 +62,6 @@ const Index = () => {
                 <div className="space-y-4">
                   <div className="flex items-center space-x-3">
                     <Switch
-                      id="blue-surface"
-                      checked={showBlueSurface}
-                      onCheckedChange={setShowBlueSurface}
-                    />
-                    <Label 
-                      htmlFor="blue-surface" 
-                      className="text-sm font-medium text-purple-700 cursor-pointer"
-                    >
-                      Superfície Externa (Azul)
-                    </Label>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3">
-                    <Switch
                       id="red-surface"
                       checked={showRedSurface}
                       onCheckedChange={setShowRedSurface}
@@ -84,7 +70,21 @@ const Index = () => {
                       htmlFor="red-surface" 
                       className="text-sm font-medium text-purple-700 cursor-pointer"
                     >
-                      Superfície Interna (Vermelha)
+                      Superfície Externa (Vermelha)
+                    </Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-3">
+                    <Switch
+                      id="blue-surface"
+                      checked={showBlueSurface}
+                      onCheckedChange={setShowBlueSurface}
+                    />
+                    <Label 
+                      htmlFor="blue-surface" 
+                      className="text-sm font-medium text-purple-700 cursor-pointer"
+                    >
+                      Superfície Interna (Azul)
                     </Label>
                   </div>
                   
