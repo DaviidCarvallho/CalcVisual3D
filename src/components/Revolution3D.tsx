@@ -3,6 +3,7 @@ import React, { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text, Grid } from '@react-three/drei';
 import * as THREE from 'three';
+import { evaluateFunction } from '@/utils/mathParser';
 
 interface Revolution3DProps {
   functionStr: string;
@@ -16,35 +17,29 @@ const RevolutionMesh = ({ functionStr, xMin, xMax, showRevolution }: Revolution3
   const lineRef = useRef<THREE.Line>(null);
 
   const { geometry, isLine } = useMemo(() => {
-    const evaluateFunction = (x: number) => {
-      try {
-        let expr = functionStr
-          .replace(/\^/g, '**')
-          .replace(/sin/g, 'Math.sin')
-          .replace(/cos/g, 'Math.cos')
-          .replace(/exp/g, 'Math.exp')
-          .replace(/log/g, 'Math.log')
-          .replace(/sqrt/g, 'Math.sqrt')
-          .replace(/x/g, `(${x})`);
-        
-        return Math.abs(eval(expr));
-      } catch {
-        return 0;
-      }
-    };
-
     if (showRevolution) {
       // Criar geometria do sólido de revolução
       const points = [];
-      const segments = 50;
+      const segments = 100;
       const step = (xMax - xMin) / segments;
 
       for (let i = 0; i <= segments; i++) {
         const x = xMin + i * step;
-        const y = evaluateFunction(x);
-        if (!isNaN(y) && isFinite(y) && y >= 0) {
-          points.push(new THREE.Vector2(y, x));
+        const y = evaluateFunction(functionStr, x);
+        
+        // Filtrar valores inválidos e negativos (para revolução)
+        if (!isNaN(y) && isFinite(y)) {
+          // Para funções como tangente, limitar valores extremos
+          const clampedY = Math.max(-10, Math.min(10, Math.abs(y)));
+          if (clampedY > 0.01) { // Evitar valores muito próximos de zero
+            points.push(new THREE.Vector2(clampedY, x));
+          }
         }
+      }
+
+      // Se não há pontos válidos, criar um ponto padrão
+      if (points.length === 0) {
+        points.push(new THREE.Vector2(0.1, 0));
       }
 
       const geometry = new THREE.LatheGeometry(points, 32);
@@ -52,15 +47,23 @@ const RevolutionMesh = ({ functionStr, xMin, xMax, showRevolution }: Revolution3
     } else {
       // Criar linha da função
       const points = [];
-      const segments = 100;
+      const segments = 200;
       const step = (xMax - xMin) / segments;
 
       for (let i = 0; i <= segments; i++) {
         const x = xMin + i * step;
-        const y = evaluateFunction(x);
+        const y = evaluateFunction(functionStr, x);
+        
         if (!isNaN(y) && isFinite(y)) {
-          points.push(new THREE.Vector3(x, y, 0));
+          // Limitar valores extremos para melhor visualização
+          const clampedY = Math.max(-10, Math.min(10, y));
+          points.push(new THREE.Vector3(x, clampedY, 0));
         }
+      }
+
+      // Se não há pontos válidos, criar uma linha padrão
+      if (points.length === 0) {
+        points.push(new THREE.Vector3(0, 0, 0));
       }
 
       const geometry = new THREE.BufferGeometry().setFromPoints(points);
@@ -86,7 +89,7 @@ const RevolutionMesh = ({ functionStr, xMin, xMax, showRevolution }: Revolution3
           />
         </mesh>
       ) : (
-        <primitive object={new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: "#3b82f6" }))} />
+        <primitive object={new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: "#3b82f6", linewidth: 2 }))} />
       )}
     </>
   );
