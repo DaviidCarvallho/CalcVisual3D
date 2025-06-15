@@ -1,9 +1,7 @@
 
-import React, { useMemo, useState } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
+import React, { useMemo } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { evaluateFunction } from '@/utils/mathParser';
-import { Button } from '@/components/ui/button';
-import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 
 interface Chart2DProps {
   function1: string;
@@ -13,10 +11,6 @@ interface Chart2DProps {
 }
 
 const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
-  const [zoomLevel, setZoomLevel] = useState(1);
-  const [panX, setPanX] = useState(0);
-  const [panY, setPanY] = useState(0);
-
   const data = useMemo(() => {
     console.log('Gerando dados do gráfico:', { function1, function2, xMin, xMax });
     
@@ -47,8 +41,6 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
         
         if (y2 !== null && !isNaN(y2) && isFinite(y2)) {
           point.y2 = Number(y2.toFixed(3));
-          // Calcular área absoluta entre as funções para melhor visualização
-          point.area = Math.abs(y1 - y2);
         }
         
         points.push(point);
@@ -61,7 +53,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
 
   const hasSecondFunction = function2 && function2.trim() !== '';
 
-  // Calcular limites dos eixos dinamicamente para melhor visualização
+  // Calcular limites dos eixos Y dinamicamente
   const { yMin, yMax } = useMemo(() => {
     if (data.length === 0) return { yMin: -5, yMax: 5 };
     
@@ -73,33 +65,14 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
     
     const min = Math.min(...allYValues);
     const max = Math.max(...allYValues);
-    const range = max - min;
-    const padding = range * 0.1; // 10% de padding
+    const range = max - min || 1;
+    const padding = range * 0.1;
     
     return {
       yMin: min - padding,
       yMax: max + padding
     };
   }, [data]);
-
-  const effectiveXMin = (xMin / zoomLevel) + panX;
-  const effectiveXMax = (xMax / zoomLevel) + panX;
-  const effectiveYMin = (yMin / zoomLevel) + panY;
-  const effectiveYMax = (yMax / zoomLevel) + panY;
-
-  const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(prev * 1.5, 5));
-  };
-
-  const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(prev / 1.5, 0.5));
-  };
-
-  const handleReset = () => {
-    setZoomLevel(1);
-    setPanX(0);
-    setPanY(0);
-  };
 
   if (data.length === 0) {
     return (
@@ -116,29 +89,15 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
-      <div className="flex justify-between items-start mb-4">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-800">
-            <span className="text-blue-600">f(x) = {function1}</span>
-            {hasSecondFunction && (
-              <span className="block text-sm text-red-600 mt-1">
-                g(x) = {function2}
-              </span>
-            )}
-          </h3>
-        </div>
-        
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleZoomIn}>
-            <ZoomIn className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleZoomOut}>
-            <ZoomOut className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleReset}>
-            <RotateCcw className="h-4 w-4" />
-          </Button>
-        </div>
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold text-gray-800">
+          <span className="text-blue-600">f(x) = {function1}</span>
+          {hasSecondFunction && (
+            <span className="block text-sm text-red-600 mt-1">
+              g(x) = {function2}
+            </span>
+          )}
+        </h3>
       </div>
       
       <div className="h-80 w-full">
@@ -152,7 +111,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 tick={{ fontSize: 12 }}
                 axisLine={{ stroke: '#6366f1' }}
                 tickLine={{ stroke: '#6366f1' }}
-                domain={[effectiveXMin, effectiveXMax]}
+                domain={[xMin, xMax]}
                 type="number"
                 tickFormatter={(value) => value.toFixed(1)}
               />
@@ -161,13 +120,13 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 tick={{ fontSize: 12 }}
                 axisLine={{ stroke: '#6366f1' }}
                 tickLine={{ stroke: '#6366f1' }}
-                domain={[effectiveYMin, effectiveYMax]}
+                domain={[yMin, yMax]}
                 tickFormatter={(value) => value.toFixed(1)}
               />
               <Tooltip 
                 formatter={(value: number, name: string) => [
                   value.toFixed(3), 
-                  name === 'y1' ? 'f(x)' : name === 'y2' ? 'g(x)' : 'Diferença entre funções'
+                  name === 'y1' ? 'f(x)' : 'g(x)'
                 ]}
                 labelFormatter={(value: number) => `x = ${value.toFixed(3)}`}
                 contentStyle={{
@@ -178,11 +137,19 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
               />
               <Area
                 type="monotone"
-                dataKey="area"
-                stroke="rgba(255, 165, 0, 0.8)"
-                fill="rgba(255, 165, 0, 0.2)"
-                fillOpacity={0.4}
-                strokeWidth={0}
+                dataKey="y1"
+                stackId="1"
+                stroke="rgba(37, 99, 235, 0.1)"
+                fill="rgba(37, 99, 235, 0.1)"
+                fillOpacity={0.3}
+              />
+              <Area
+                type="monotone"
+                dataKey="y2"
+                stackId="2"
+                stroke="rgba(220, 38, 38, 0.1)"
+                fill="rgba(220, 38, 38, 0.1)"
+                fillOpacity={0.3}
               />
               <Line 
                 type="monotone" 
@@ -210,7 +177,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 tick={{ fontSize: 12 }}
                 axisLine={{ stroke: '#6366f1' }}
                 tickLine={{ stroke: '#6366f1' }}
-                domain={[effectiveXMin, effectiveXMax]}
+                domain={[xMin, xMax]}
                 type="number"
                 tickFormatter={(value) => value.toFixed(1)}
               />
@@ -219,7 +186,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 tick={{ fontSize: 12 }}
                 axisLine={{ stroke: '#6366f1' }}
                 tickLine={{ stroke: '#6366f1' }}
-                domain={[effectiveYMin, effectiveYMax]}
+                domain={[yMin, yMax]}
                 tickFormatter={(value) => value.toFixed(1)}
               />
               <Tooltip 
@@ -245,7 +212,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
       </div>
       
       <div className="mt-2 text-xs text-gray-500 text-center">
-        Zoom: {zoomLevel.toFixed(1)}x | {hasSecondFunction ? 'Área entre funções visualizada em laranja' : 'Use os controles de zoom para explorar'}
+        {hasSecondFunction ? 'Visualização de duas funções com áreas destacadas' : 'Gráfico da função matemática'}
       </div>
     </div>
   );
