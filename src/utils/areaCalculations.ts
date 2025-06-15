@@ -1,5 +1,6 @@
 
 import { evaluateFunction } from './mathParser';
+import { findIntersections } from './intersectionCalculator';
 
 export interface AreaPoint {
   x: number;
@@ -15,12 +16,35 @@ export const calculateAreaBetweenCurves = (
   xMin: number,
   xMax: number,
   segments: number = 300
-): AreaPoint[] => {
+): { points: AreaPoint[], intersections: { x: number, y: number }[], effectiveXMin: number, effectiveXMax: number } => {
+  // Encontrar pontos de interseção
+  const intersections = findIntersections(function1, function2, xMin, xMax);
+  console.log('Interseções encontradas:', intersections);
+  
+  // Determinar limites efetivos baseados nas interseções
+  let effectiveXMin = xMin;
+  let effectiveXMax = xMax;
+  
+  if (intersections.length >= 2) {
+    // Usar o primeiro e último pontos de interseção como limites
+    intersections.sort((a, b) => a.x - b.x);
+    effectiveXMin = intersections[0].x;
+    effectiveXMax = intersections[intersections.length - 1].x;
+  } else if (intersections.length === 1) {
+    // Se há apenas uma interseção, usar o ponto médio do intervalo
+    const midPoint = (xMin + xMax) / 2;
+    if (intersections[0].x < midPoint) {
+      effectiveXMin = intersections[0].x;
+    } else {
+      effectiveXMax = intersections[0].x;
+    }
+  }
+  
   const points: AreaPoint[] = [];
-  const step = (xMax - xMin) / segments;
+  const step = (effectiveXMax - effectiveXMin) / segments;
   
   for (let i = 0; i <= segments; i++) {
-    const x = xMin + i * step;
+    const x = effectiveXMin + i * step;
     const y1 = evaluateFunction(function1, x);
     const y2 = evaluateFunction(function2, x);
     
@@ -38,7 +62,7 @@ export const calculateAreaBetweenCurves = (
     }
   }
   
-  return points;
+  return { points, intersections, effectiveXMin, effectiveXMax };
 };
 
 export const calculateAreaValue = (points: AreaPoint[], xMin: number, xMax: number): number => {

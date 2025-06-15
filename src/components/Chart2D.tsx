@@ -42,10 +42,6 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
         
         if (y2 !== null && !isNaN(y2) && isFinite(y2)) {
           point.y2 = Number(y2.toFixed(6));
-          // Para área entre curvas
-          point.upperY = Math.max(y1, y2);
-          point.lowerY = Math.min(y1, y2);
-          point.areaDiff = Math.abs(y1 - y2);
         }
         
         points.push(point);
@@ -58,13 +54,35 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
 
   const hasSecondFunction = function2 && function2.trim() !== '';
 
-  // Calcular área entre as curvas
-  const areaValue = useMemo(() => {
+  // Calcular área entre as curvas e interseções
+  const areaData = useMemo(() => {
     if (!hasSecondFunction) return null;
     
-    const areaPoints = calculateAreaBetweenCurves(function1, function2!, xMin, xMax);
-    return calculateAreaValue(areaPoints, xMin, xMax);
+    const result = calculateAreaBetweenCurves(function1, function2!, xMin, xMax);
+    const areaValue = calculateAreaValue(result.points, result.effectiveXMin, result.effectiveXMax);
+    
+    return {
+      ...result,
+      areaValue
+    };
   }, [function1, function2, xMin, xMax, hasSecondFunction]);
+
+  // Gerar dados para a área limitada pelas interseções
+  const areaChartData = useMemo(() => {
+    if (!areaData) return data;
+    
+    // Filtrar dados apenas na região entre interseções
+    return data.map(point => {
+      if (point.x >= areaData.effectiveXMin && point.x <= areaData.effectiveXMax && point.y2 !== undefined) {
+        return {
+          ...point,
+          upperY: Math.max(point.y1, point.y2),
+          lowerY: Math.min(point.y1, point.y2)
+        };
+      }
+      return point;
+    });
+  }, [data, areaData]);
 
   const { yMin, yMax } = useMemo(() => {
     if (data.length === 0) return { yMin: -5, yMax: 5 };
@@ -155,7 +173,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
 
   if (data.length === 0) {
     return (
-      <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200 h-96">
+      <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200 h-96">
         <h3 className="text-lg font-semibold mb-4 text-gray-800">
           Gráfico 2D
         </h3>
@@ -167,8 +185,8 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
   }
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200">
-      <div className="mb-3">
+    <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+      <div className="mb-2">
         <h3 className="text-lg font-semibold text-gray-800">
           <span className="text-blue-600">f(x) = {function1}</span>
           {hasSecondFunction && (
@@ -180,17 +198,24 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
         <p className="text-xs text-gray-500 mt-1">
           Domínio: [{formatAxisValue(xMin, true)}, {formatAxisValue(xMax, true)}]
         </p>
-        {hasSecondFunction && areaValue && (
-          <p className="text-xs text-green-600 mt-1">
-            Área entre as curvas: {areaValue.toFixed(3)} unidades²
-          </p>
+        {hasSecondFunction && areaData && (
+          <>
+            <p className="text-xs text-green-600 mt-1">
+              Área entre as curvas: {areaData.areaValue.toFixed(3)} unidades²
+            </p>
+            {areaData.intersections.length > 0 && (
+              <p className="text-xs text-purple-600 mt-1">
+                Interseções: {areaData.intersections.map(p => `(${p.x.toFixed(2)}, ${p.y.toFixed(2)})`).join(', ')}
+              </p>
+            )}
+          </>
         )}
       </div>
       
-      <div className="h-96 w-full">
+      <div className="h-80 w-full">
         <ResponsiveContainer width="100%" height="100%">
           {hasSecondFunction ? (
-            <AreaChart data={data} margin={{ top: 10, right: 20, left: 20, bottom: 20 }}>
+            <AreaChart data={areaChartData} margin={{ top: 5, right: 15, left: 15, bottom: 15 }}>
               <CartesianGrid strokeDasharray="2 2" stroke="#e0e7ff" />
               
               <ReferenceLine y={0} stroke="#9ca3af" strokeWidth={1} />
@@ -206,10 +231,21 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 </>
               )}
               
+              {/* Linhas de interseção */}
+              {areaData?.intersections.map((intersection, index) => (
+                <ReferenceLine 
+                  key={index}
+                  x={intersection.x} 
+                  stroke="#8b5cf6" 
+                  strokeWidth={2} 
+                  strokeDasharray="3 3" 
+                />
+              ))}
+              
               <XAxis 
                 dataKey="x" 
                 stroke="#6366f1"
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 10 }}
                 axisLine={{ stroke: '#6366f1', strokeWidth: 2 }}
                 tickLine={{ stroke: '#6366f1', strokeWidth: 1 }}
                 domain={[xMin, xMax]}
@@ -219,7 +255,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
               />
               <YAxis 
                 stroke="#6366f1"
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 10 }}
                 axisLine={{ stroke: '#6366f1', strokeWidth: 2 }}
                 tickLine={{ stroke: '#6366f1', strokeWidth: 1 }}
                 domain={[yMin, yMax]}
@@ -236,18 +272,18 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                   backgroundColor: 'rgba(255, 255, 255, 0.95)',
                   border: '1px solid #e0e7ff',
                   borderRadius: '8px',
-                  fontSize: '11px'
+                  fontSize: '10px'
                 }}
               />
               
-              {/* Área entre as curvas */}
+              {/* Área entre as curvas apenas na região das interseções */}
               <Area 
                 type="monotone" 
                 dataKey="upperY" 
                 stackId="1"
                 stroke="none"
-                fill="rgba(34, 197, 94, 0.2)"
-                fillOpacity={0.4}
+                fill="rgba(34, 197, 94, 0.3)"
+                fillOpacity={0.6}
               />
               <Area 
                 type="monotone" 
@@ -258,7 +294,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 fillOpacity={1}
               />
               
-              {/* Linhas das funções */}
+              {/* Linhas das funções com cores corretas */}
               <Line 
                 type="monotone" 
                 dataKey="y1" 
@@ -282,7 +318,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
               />
             </AreaChart>
           ) : (
-            <LineChart data={data} margin={{ top: 10, right: 20, left: 20, bottom: 20 }}>
+            <LineChart data={data} margin={{ top: 5, right: 15, left: 15, bottom: 15 }}>
               <CartesianGrid strokeDasharray="2 2" stroke="#e0e7ff" />
               
               <ReferenceLine y={0} stroke="#9ca3af" strokeWidth={1} />
@@ -301,7 +337,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
               <XAxis 
                 dataKey="x" 
                 stroke="#6366f1"
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 10 }}
                 axisLine={{ stroke: '#6366f1', strokeWidth: 2 }}
                 tickLine={{ stroke: '#6366f1', strokeWidth: 1 }}
                 domain={[xMin, xMax]}
@@ -311,7 +347,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
               />
               <YAxis 
                 stroke="#6366f1"
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 10 }}
                 axisLine={{ stroke: '#6366f1', strokeWidth: 2 }}
                 tickLine={{ stroke: '#6366f1', strokeWidth: 1 }}
                 domain={[yMin, yMax]}
@@ -328,7 +364,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                   backgroundColor: 'rgba(255, 255, 255, 0.95)',
                   border: '1px solid #e0e7ff',
                   borderRadius: '8px',
-                  fontSize: '11px'
+                  fontSize: '10px'
                 }}
               />
               
@@ -348,8 +384,8 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
         </ResponsiveContainer>
       </div>
       
-      <div className="mt-2 text-xs text-gray-500 text-center">
-        {hasSecondFunction ? 'Visualização da área entre duas funções matemáticas' : 'Visualização da função matemática'}
+      <div className="mt-1 text-xs text-gray-500 text-center">
+        {hasSecondFunction ? 'Área entre funções delimitada pelas interseções' : 'Visualização da função matemática'}
       </div>
     </div>
   );

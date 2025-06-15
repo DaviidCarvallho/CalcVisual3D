@@ -4,6 +4,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text, Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import { evaluateFunction } from '@/utils/mathParser';
+import { calculateAreaBetweenCurves } from '@/utils/areaCalculations';
 
 interface Revolution3DProps {
   functionStr: string;
@@ -62,9 +63,15 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
       
       return { geometry, secondGeometry: null, regionGeometry: null };
     } else if (hasSecondFunction) {
-      // Criar representação 3D da região entre duas funções
+      // Usar limites das interseções para criar a região 3D
+      const areaResult = calculateAreaBetweenCurves(functionStr, function2, xMin, xMax);
+      const effectiveXMin = areaResult.effectiveXMin;
+      const effectiveXMax = areaResult.effectiveXMax;
+      
+      console.log('Limites efetivos para região 3D:', effectiveXMin, effectiveXMax);
+      
       const segments = 100;
-      const step = (xMax - xMin) / segments;
+      const step = (effectiveXMax - effectiveXMin) / segments;
       
       // Pontos para as duas funções
       const points1 = [];
@@ -73,12 +80,12 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
       const faces = [];
       
       for (let i = 0; i <= segments; i++) {
-        const x = xMin + i * step;
+        const x = effectiveXMin + i * step;
         const y1 = evaluateFunction(functionStr, x);
         const y2 = evaluateFunction(function2, x);
         
         if (!isNaN(y1) && !isNaN(y2) && isFinite(y1) && isFinite(y2)) {
-          const scaledX = (x - xMin) / (xMax - xMin) * 4 - 2;
+          const scaledX = (x - effectiveXMin) / (effectiveXMax - effectiveXMin) * 4 - 2;
           const scaledY1 = Math.max(-3, Math.min(3, y1 * 0.5));
           const scaledY2 = Math.max(-3, Math.min(3, y2 * 0.5));
           
@@ -180,7 +187,7 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
               <meshStandardMaterial 
                 color="#22c55e" 
                 transparent 
-                opacity={0.6}
+                opacity={0.7}
                 side={THREE.DoubleSide}
                 roughness={0.3}
                 metalness={0.0}
@@ -190,15 +197,15 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
           
           {/* Linha da primeira função */}
           <primitive object={new THREE.Line(geometry, new THREE.LineBasicMaterial({ 
-            color: "#3b82f6", 
-            linewidth: 3 
+            color: "#2563eb", 
+            linewidth: 4 
           }))} />
           
           {/* Linha da segunda função */}
           {secondGeometry && (
             <primitive object={new THREE.Line(secondGeometry, new THREE.LineBasicMaterial({ 
               color: "#dc2626", 
-              linewidth: 3 
+              linewidth: 4 
             }))} />
           )}
         </>
@@ -220,7 +227,7 @@ const Revolution3D = (props: Revolution3DProps) => {
       <div className="absolute top-4 left-4 z-10 text-white">
         <h3 className="text-lg font-semibold">
           {props.showRevolution && !hasSecondFunction ? 'Sólido de Revolução 3D' : 
-           hasSecondFunction ? 'Região 3D entre Funções' : 'Visualização 3D'}
+           hasSecondFunction ? 'Região 3D entre Interseções' : 'Visualização 3D'}
         </h3>
         <p className="text-sm text-gray-300">
           f(x) = {props.functionStr}
@@ -237,7 +244,7 @@ const Revolution3D = (props: Revolution3DProps) => {
         )}
         {hasSecondFunction && (
           <p className="text-xs text-gray-400 mt-1">
-            Região entre as curvas
+            Região delimitada pelas interseções
           </p>
         )}
       </div>
