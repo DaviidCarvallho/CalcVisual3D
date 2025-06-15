@@ -9,8 +9,8 @@ import ChatBot from '@/components/ChatBot';
 const Index = () => {
   const [function1, setFunction1] = useState('x^2');
   const [function2, setFunction2] = useState<string | null>(null);
-  const [xMin, setXMin] = useState(-3);
-  const [xMax, setXMax] = useState(3);
+  const [xMin, setXMin] = useState(-5);
+  const [xMax, setXMax] = useState(5);
   const [showRevolution, setShowRevolution] = useState(false);
 
   const handleFunctionChange = (func1: string, func2: string | null, min: number, max: number) => {
@@ -23,6 +23,13 @@ const Index = () => {
 
   const handleGenerateRevolution = () => {
     setShowRevolution(true);
+  };
+
+  const getDomainText = () => {
+    if (xMin === -2 * Math.PI && xMax === 2 * Math.PI) {
+      return '[-2π, 2π]';
+    }
+    return `[${xMin.toFixed(1)}, ${xMax.toFixed(1)}]`;
   };
 
   return (
@@ -53,20 +60,20 @@ const Index = () => {
                   </div>
                 )}
                 <div>
-                  <strong>Domínio:</strong> [{xMin}, {xMax}]
+                  <strong>Domínio:</strong> {getDomainText()}
                 </div>
                 {showRevolution && (
                   <div>
-                    <strong>Volume do sólido:</strong> V = π∫[{xMin},{xMax}] [f(x)]² dx
+                    <strong>Volume do sólido:</strong> V = π∫[{xMin.toFixed(1)},{xMax.toFixed(1)}] [f(x)]² dx
                   </div>
                 )}
                 {function2 && (
                   <div>
-                    <strong>Área entre funções:</strong> A = ∫[{xMin},{xMax}] |f(x) - g(x)| dx
+                    <strong>Área entre funções:</strong> A = ∫[{xMin.toFixed(1)},{xMax.toFixed(1)}] |f(x) - g(x)| dx
                   </div>
                 )}
                 <div className="pt-2 text-xs text-indigo-600">
-                  💡 <strong>Dica:</strong> Experimente funções como x^2 + 2*x + 1, sin(x), x^3 - 3*x
+                  💡 <strong>Dica:</strong> Experimente funções como sin(x), exp(x), x^3 - 3*x, sqrt(x)
                 </div>
               </div>
             </div>

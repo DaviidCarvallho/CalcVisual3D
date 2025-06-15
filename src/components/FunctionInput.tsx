@@ -14,25 +14,48 @@ const FunctionInput = ({ onFunctionChange, onGenerateRevolution }: FunctionInput
   const [function1, setFunction1] = useState('x^2');
   const [function2, setFunction2] = useState('');
   const [showSecondFunction, setShowSecondFunction] = useState(false);
-  const [xMin, setXMin] = useState(-3);
-  const [xMax, setXMax] = useState(3);
+
+  // Valores padrão fixos para visualização
+  const getDefaultRange = (func: string) => {
+    if (func.includes('sin') || func.includes('cos') || func.includes('tan')) {
+      return { min: -2 * Math.PI, max: 2 * Math.PI };
+    }
+    if (func.includes('exp')) {
+      return { min: -3, max: 3 };
+    }
+    if (func.includes('sqrt') || func.includes('log')) {
+      return { min: 0.1, max: 10 };
+    }
+    return { min: -5, max: 5 };
+  };
 
   const handleSubmit = () => {
+    const range = getDefaultRange(function1);
     onFunctionChange(
       function1, 
       showSecondFunction && function2.trim() ? function2 : null, 
-      xMin, 
-      xMax
+      range.min, 
+      range.max
     );
   };
 
   const presetFunctions = [
-    { name: 'Parábola', func: 'x^2', min: -3, max: 3 },
-    { name: 'Seno', func: 'sin(x)', min: -Math.PI, max: Math.PI },
-    { name: 'Exponencial', func: 'exp(x/2)', min: -2, max: 2 },
-    { name: 'Raiz', func: 'sqrt(x)', min: 0, max: 4 },
-    { name: 'Polinômio', func: 'x^2 + 2*x + 1', min: -5, max: 3 },
-    { name: 'Cúbica', func: 'x^3 - 3*x', min: -3, max: 3 },
+    { name: 'Parábola', func: 'x^2' },
+    { name: 'Cúbica', func: 'x^3' },
+    { name: 'Seno', func: 'sin(x)' },
+    { name: 'Cosseno', func: 'cos(x)' },
+    { name: 'Tangente', func: 'tan(x)' },
+    { name: 'Exponencial', func: 'exp(x)' },
+    { name: 'Logaritmo', func: 'log(x)' },
+    { name: 'Raiz Quadrada', func: 'sqrt(x)' },
+    { name: 'Valor Absoluto', func: 'abs(x)' },
+    { name: 'Polinômio', func: 'x^3 - 3*x + 2' },
+    { name: 'Senoidal', func: '2*sin(x) + 1' },
+    { name: 'Exponencial Decrescente', func: 'exp(-x)' },
+    { name: 'Parábola Invertida', func: '-x^2 + 4' },
+    { name: 'Função Racional', func: '1/x' },
+    { name: 'Função Mista', func: 'x^2 + sin(x)' },
+    { name: 'Onda Complexa', func: 'sin(x) + cos(2*x)' }
   ];
 
   return (
@@ -46,7 +69,7 @@ const FunctionInput = ({ onFunctionChange, onGenerateRevolution }: FunctionInput
             id="function1"
             value={function1}
             onChange={(e) => setFunction1(e.target.value)}
-            placeholder="Ex: x^2 + 2*x + 1"
+            placeholder="Ex: x^2 + 2*x + 1, sin(x), exp(x)"
             className="mt-1"
           />
         </div>
@@ -70,34 +93,11 @@ const FunctionInput = ({ onFunctionChange, onGenerateRevolution }: FunctionInput
               id="function2"
               value={function2}
               onChange={(e) => setFunction2(e.target.value)}
-              placeholder="Ex: x + 2"
+              placeholder="Ex: x + 2, cos(x), sqrt(x)"
               className="mt-1"
             />
           </div>
         )}
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="xmin">x mínimo</Label>
-            <Input
-              id="xmin"
-              type="number"
-              value={xMin}
-              onChange={(e) => setXMin(Number(e.target.value))}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="xmax">x máximo</Label>
-            <Input
-              id="xmax"
-              type="number"
-              value={xMax}
-              onChange={(e) => setXMax(Number(e.target.value))}
-              className="mt-1"
-            />
-          </div>
-        </div>
 
         <div className="flex space-x-2">
           <Button onClick={handleSubmit} className="flex-1">
@@ -112,7 +112,7 @@ const FunctionInput = ({ onFunctionChange, onGenerateRevolution }: FunctionInput
 
         <div>
           <Label className="text-sm text-gray-600">Funções Pré-definidas:</Label>
-          <div className="grid grid-cols-2 gap-2 mt-2">
+          <div className="grid grid-cols-2 gap-1 mt-2 max-h-48 overflow-y-auto">
             {presetFunctions.map((preset) => (
               <Button
                 key={preset.name}
@@ -120,10 +120,8 @@ const FunctionInput = ({ onFunctionChange, onGenerateRevolution }: FunctionInput
                 size="sm"
                 onClick={() => {
                   setFunction1(preset.func);
-                  setXMin(preset.min);
-                  setXMax(preset.max);
                 }}
-                className="text-left justify-start"
+                className="text-left justify-start text-xs h-8"
               >
                 {preset.name}
               </Button>

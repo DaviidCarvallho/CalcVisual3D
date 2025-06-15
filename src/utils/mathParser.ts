@@ -10,28 +10,39 @@ export const parseMathFunction = (functionStr: string): string => {
   let expr = functionStr
     .toLowerCase()
     .trim()
-    // Substituir operadores matemáticos
+    // Substituir operadores matemáticos primeiro
     .replace(/\^/g, '**')
-    .replace(/\*\*/g, '**')
-    // Substituir funções trigonométricas
-    .replace(/\bsin\b/g, 'Math.sin')
-    .replace(/\bcos\b/g, 'Math.cos')
-    .replace(/\btan\b/g, 'Math.tan')
+    // Substituir funções trigonométricas - mais específico
+    .replace(/\bsin\s*\(/g, 'Math.sin(')
+    .replace(/\bcos\s*\(/g, 'Math.cos(')
+    .replace(/\btan\s*\(/g, 'Math.tan(')
     // Substituir outras funções matemáticas
-    .replace(/\bexp\b/g, 'Math.exp')
-    .replace(/\blog\b/g, 'Math.log')
-    .replace(/\bln\b/g, 'Math.log')
-    .replace(/\bsqrt\b/g, 'Math.sqrt')
-    .replace(/\babs\b/g, 'Math.abs')
+    .replace(/\bexp\s*\(/g, 'Math.exp(')
+    .replace(/\blog\s*\(/g, 'Math.log(')
+    .replace(/\bln\s*\(/g, 'Math.log(')
+    .replace(/\bsqrt\s*\(/g, 'Math.sqrt(')
+    .replace(/\babs\s*\(/g, 'Math.abs(')
+    // Tratar funções sem parênteses (como sin x, cos x)
+    .replace(/\bsin\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.sin($1)')
+    .replace(/\bcos\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.cos($1)')
+    .replace(/\btan\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.tan($1)')
+    .replace(/\bexp\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.exp($1)')
+    .replace(/\bsqrt\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.sqrt($1)')
     // Adicionar multiplicação implícita
     .replace(/(\d+)([a-z])/g, '$1*$2')
     .replace(/([a-z])(\d+)/g, '$1*$2')
     .replace(/\)([a-z])/g, ')*$1')
     .replace(/([a-z])\(/g, '$1*(')
-    // Substituir x² por x**2
+    .replace(/(\d+)\(/g, '$1*(')
+    .replace(/\)(\d+)/g, ')*$1')
+    // Substituir notações especiais
     .replace(/x²/g, 'x**2')
-    .replace(/x³/g, 'x**3');
+    .replace(/x³/g, 'x**3')
+    // Adicionar constantes matemáticas
+    .replace(/\bpi\b/g, 'Math.PI')
+    .replace(/\be\b/g, 'Math.E');
   
+  console.log('Função parseada:', functionStr, '->', expr);
   return expr;
 };
 
