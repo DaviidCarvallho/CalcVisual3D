@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { evaluateFunction } from '@/utils/mathParser';
@@ -71,6 +70,15 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
     let finalMin = Math.min(dataMin, 0);
     let finalMax = Math.max(dataMax, 0);
     
+    // Para funções trigonométricas, garantir que -1 e 1 estejam visíveis
+    const functions = [function1, function2].filter(Boolean);
+    const isTrigonometric = functions.some(f => f.includes('sin') || f.includes('cos'));
+    
+    if (isTrigonometric) {
+      finalMin = Math.min(finalMin, -1.2);
+      finalMax = Math.max(finalMax, 1.2);
+    }
+    
     // Se os valores estão muito próximos de zero, expandir um pouco
     if (Math.abs(finalMax - finalMin) < 0.1) {
       finalMin = Math.min(finalMin, -1);
@@ -84,7 +92,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
       yMin: finalMin - padding,
       yMax: finalMax + padding
     };
-  }, [data]);
+  }, [data, function1, function2]);
 
   // Função para formatar valores dos eixos
   const formatAxisValue = (value: number, isX: boolean = false) => {
@@ -103,6 +111,44 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
     if (Math.abs(value) >= 1) return value.toFixed(2);
     return value.toFixed(3);
   };
+
+  // Gerar ticks personalizados para o eixo Y
+  const generateYTicks = useMemo(() => {
+    const functions = [function1, function2].filter(Boolean);
+    const isTrigonometric = functions.some(f => f.includes('sin') || f.includes('cos'));
+    
+    if (isTrigonometric) {
+      // Para funções trigonométricas, incluir sempre -1, 0, 1
+      const baseTicks = [-1, 0, 1];
+      const additionalTicks = [];
+      
+      // Adicionar ticks intermediários se necessário
+      if (yMin < -1.5) additionalTicks.push(Math.ceil(yMin));
+      if (yMax > 1.5) additionalTicks.push(Math.floor(yMax));
+      
+      return [...additionalTicks.filter(t => t < -1), ...baseTicks, ...additionalTicks.filter(t => t > 1)]
+        .filter(t => t >= yMin && t <= yMax)
+        .sort((a, b) => a - b);
+    }
+    
+    // Para outras funções, usar lógica padrão melhorada
+    const range = yMax - yMin;
+    const numTicks = 5;
+    const step = range / (numTicks - 1);
+    
+    const ticks = [];
+    for (let i = 0; i < numTicks; i++) {
+      ticks.push(yMin + i * step);
+    }
+    
+    // Sempre incluir o zero se estiver no range
+    if (yMin <= 0 && yMax >= 0 && !ticks.some(t => Math.abs(t) < 0.001)) {
+      ticks.push(0);
+      ticks.sort((a, b) => a - b);
+    }
+    
+    return ticks;
+  }, [yMin, yMax, function1, function2]);
 
   if (data.length === 0) {
     return (
@@ -146,6 +192,14 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
               <ReferenceLine x={0} stroke="#9ca3af" strokeWidth={1} />
             )}
             
+            {/* Linhas de referência para funções trigonométricas */}
+            {[function1, function2].filter(Boolean).some(f => f.includes('sin') || f.includes('cos')) && (
+              <>
+                <ReferenceLine y={1} stroke="#e5e7eb" strokeWidth={1} strokeDasharray="4 4" />
+                <ReferenceLine y={-1} stroke="#e5e7eb" strokeWidth={1} strokeDasharray="4 4" />
+              </>
+            )}
+            
             <XAxis 
               dataKey="x" 
               stroke="#6366f1"
@@ -164,7 +218,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
               tickLine={{ stroke: '#6366f1', strokeWidth: 1 }}
               domain={[yMin, yMax]}
               tickFormatter={(value) => formatAxisValue(value)}
-              ticks={[yMin, yMin + (yMax-yMin)/4, 0, yMin + 3*(yMax-yMin)/4, yMax].filter(t => t >= yMin && t <= yMax)}
+              ticks={generateYTicks}
             />
             <Tooltip 
               formatter={(value: number, name: string) => [
