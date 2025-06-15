@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { evaluateFunction } from '@/utils/mathParser';
 
 interface Chart2DProps {
@@ -25,9 +25,8 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
     }
 
     const points = [];
-    // Ajustar número de segmentos baseado no range para melhor precisão
     const range = xMax - xMin;
-    const segments = Math.max(200, Math.min(500, Math.floor(range * 50)));
+    const segments = Math.max(300, Math.min(600, Math.floor(range * 60)));
     const step = (xMax - xMin) / segments;
     
     for (let i = 0; i <= segments; i++) {
@@ -37,12 +36,12 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
       
       if (!isNaN(y1) && isFinite(y1)) {
         const point: any = { 
-          x: Number(x.toFixed(4)), 
-          y1: Number(y1.toFixed(4))
+          x: Number(x.toFixed(6)), 
+          y1: Number(y1.toFixed(6))
         };
         
         if (y2 !== null && !isNaN(y2) && isFinite(y2)) {
-          point.y2 = Number(y2.toFixed(4));
+          point.y2 = Number(y2.toFixed(6));
         }
         
         points.push(point);
@@ -55,7 +54,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
 
   const hasSecondFunction = function2 && function2.trim() !== '';
 
-  // Calcular limites dos eixos Y dinamicamente com melhor lógica
+  // Calcular limites dos eixos Y com melhor lógica para incluir sempre o zero
   const { yMin, yMax } = useMemo(() => {
     if (data.length === 0) return { yMin: -5, yMax: 5 };
     
@@ -65,28 +64,38 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
       return values;
     });
     
-    const min = Math.min(...allYValues);
-    const max = Math.max(...allYValues);
+    const dataMin = Math.min(...allYValues);
+    const dataMax = Math.max(...allYValues);
     
-    // Sempre incluir zero no range para melhor referência visual
-    const actualMin = Math.min(min, 0);
-    const actualMax = Math.max(max, 0);
+    // Sempre incluir zero no domínio
+    let finalMin = Math.min(dataMin, 0);
+    let finalMax = Math.max(dataMax, 0);
     
-    const range = actualMax - actualMin || 1;
-    const padding = range * 0.15; // Padding um pouco maior para melhor visualização
+    // Se os valores estão muito próximos de zero, expandir um pouco
+    if (Math.abs(finalMax - finalMin) < 0.1) {
+      finalMin = Math.min(finalMin, -1);
+      finalMax = Math.max(finalMax, 1);
+    }
+    
+    const range = finalMax - finalMin;
+    const padding = range * 0.1;
     
     return {
-      yMin: actualMin - padding,
-      yMax: actualMax + padding
+      yMin: finalMin - padding,
+      yMax: finalMax + padding
     };
   }, [data]);
 
-  // Função para formatar valores dos eixos de forma mais inteligente
+  // Função para formatar valores dos eixos
   const formatAxisValue = (value: number, isX: boolean = false) => {
-    if (isX && Math.abs(value - Math.PI) < 0.01) return 'π';
-    if (isX && Math.abs(value + Math.PI) < 0.01) return '-π';
-    if (isX && Math.abs(value - 2 * Math.PI) < 0.01) return '2π';
-    if (isX && Math.abs(value + 2 * Math.PI) < 0.01) return '-2π';
+    if (Math.abs(value) < 0.0001) return '0';
+    
+    if (isX) {
+      if (Math.abs(value - Math.PI) < 0.01) return 'π';
+      if (Math.abs(value + Math.PI) < 0.01) return '-π';
+      if (Math.abs(value - 2 * Math.PI) < 0.01) return '2π';
+      if (Math.abs(value + 2 * Math.PI) < 0.01) return '-2π';
+    }
     
     if (Math.abs(value) >= 1000) return value.toExponential(1);
     if (Math.abs(value) >= 100) return value.toFixed(0);
@@ -126,27 +135,36 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
       
       <div className="h-80 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 20, right: 30, left: 40, bottom: 40 }}>
+          <LineChart data={data} margin={{ top: 20, right: 30, left: 50, bottom: 50 }}>
             <CartesianGrid strokeDasharray="2 2" stroke="#e0e7ff" />
+            
+            {/* Linha de referência para o eixo X (y=0) */}
+            <ReferenceLine y={0} stroke="#9ca3af" strokeWidth={1} />
+            
+            {/* Linha de referência para o eixo Y (x=0) se estiver no domínio */}
+            {xMin <= 0 && xMax >= 0 && (
+              <ReferenceLine x={0} stroke="#9ca3af" strokeWidth={1} />
+            )}
+            
             <XAxis 
               dataKey="x" 
               stroke="#6366f1"
-              tick={{ fontSize: 11 }}
-              axisLine={{ stroke: '#6366f1', strokeWidth: 1.5 }}
-              tickLine={{ stroke: '#6366f1' }}
+              tick={{ fontSize: 12 }}
+              axisLine={{ stroke: '#6366f1', strokeWidth: 2 }}
+              tickLine={{ stroke: '#6366f1', strokeWidth: 1 }}
               domain={[xMin, xMax]}
               type="number"
               tickFormatter={(value) => formatAxisValue(value, true)}
-              tickCount={8}
+              ticks={[xMin, xMin + (xMax-xMin)/4, xMin + (xMax-xMin)/2, xMin + 3*(xMax-xMin)/4, xMax]}
             />
             <YAxis 
               stroke="#6366f1"
-              tick={{ fontSize: 11 }}
-              axisLine={{ stroke: '#6366f1', strokeWidth: 1.5 }}
-              tickLine={{ stroke: '#6366f1' }}
+              tick={{ fontSize: 12 }}
+              axisLine={{ stroke: '#6366f1', strokeWidth: 2 }}
+              tickLine={{ stroke: '#6366f1', strokeWidth: 1 }}
               domain={[yMin, yMax]}
               tickFormatter={(value) => formatAxisValue(value)}
-              tickCount={8}
+              ticks={[yMin, yMin + (yMax-yMin)/4, 0, yMin + 3*(yMax-yMin)/4, yMax].filter(t => t >= yMin && t <= yMax)}
             />
             <Tooltip 
               formatter={(value: number, name: string) => [
@@ -162,7 +180,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
               }}
             />
             
-            {/* Primeira função - sempre presente */}
+            {/* Primeira função */}
             <Line 
               type="monotone" 
               dataKey="y1" 
@@ -170,11 +188,11 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
               strokeWidth={2.5}
               dot={false}
               name="f(x)"
-              strokeOpacity={0.9}
+              strokeOpacity={1}
               connectNulls={false}
             />
             
-            {/* Segunda função - apenas se existir */}
+            {/* Segunda função */}
             {hasSecondFunction && (
               <Line 
                 type="monotone" 
@@ -183,7 +201,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 strokeWidth={2.5}
                 dot={false}
                 name="g(x)"
-                strokeOpacity={0.9}
+                strokeOpacity={1}
                 connectNulls={false}
               />
             )}
