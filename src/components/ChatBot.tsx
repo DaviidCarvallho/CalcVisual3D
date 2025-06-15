@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +17,7 @@ const ChatBot = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
-      text: "Olá! Sou seu assistente de matemática powered by Gemini. Posso ajudar você com questões sobre funções, cálculo e sólidos de revolução. Como posso ajudar?",
+      text: "Olá! Sou seu assistente especializado em matemática e no CalcViz 3D! 🧮✨\n\nPosso te ajudar com:\n📊 **Visualização de Funções**: Digite funções como x^2, sin(x), exp(x) e veja como elas se comportam\n🎯 **Sólidos de Revolução**: Explore como as funções geram volumes 3D quando rotacionadas\n🔧 **Dicas da Aplicação**: Use as funções pré-definidas ou crie suas próprias. Experimente adicionar uma segunda função para ver a área entre elas!\n📈 **Conceitos Matemáticos**: Tire dúvidas sobre derivadas, integrais, limites e muito mais!\n\nQue tal começar plotando uma função interessante? Experimente 'sin(x) + cos(2*x)' ou me pergunte sobre qualquer conceito matemático!",
       isBot: true,
       timestamp: new Date()
     }
@@ -59,7 +60,7 @@ const ChatBot = () => {
     } catch (error) {
       const errorMessage: Message = {
         id: messages.length + 2,
-        text: "Desculpe, ocorreu um erro ao processar sua pergunta. Tente novamente.",
+        text: "Desculpe, ocorreu um erro ao processar sua pergunta. Tente novamente ou me pergunte sobre como usar as funcionalidades do CalcViz 3D!",
         isBot: true,
         timestamp: new Date()
       };
@@ -80,7 +81,7 @@ const ChatBot = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Bot className="h-5 w-5 text-blue-600" />
-          Assistente de Matemática - Gemini
+          Assistente CalcViz 3D - Powered by Gemini
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col h-80">
@@ -103,7 +104,7 @@ const ChatBot = () => {
                   ) : (
                     <User className="h-4 w-4 mt-0.5 flex-shrink-0" />
                   )}
-                  <p className="text-sm">{message.text}</p>
+                  <p className="text-sm whitespace-pre-line">{message.text}</p>
                 </div>
               </div>
             </div>
@@ -114,7 +115,7 @@ const ChatBot = () => {
                 <div className="flex items-center gap-2">
                   <Bot className="h-4 w-4" />
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">Pensando...</span>
+                  <span className="text-sm">Analisando...</span>
                 </div>
               </div>
             </div>
@@ -126,7 +127,7 @@ const ChatBot = () => {
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSendMessage()}
-            placeholder="Digite sua pergunta sobre matemática..."
+            placeholder="Pergunte sobre matemática ou como usar o CalcViz 3D..."
             className="flex-1"
             disabled={isLoading}
           />

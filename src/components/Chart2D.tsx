@@ -70,9 +70,9 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
   return (
     <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
       <h3 className="text-lg font-semibold mb-4 text-gray-800">
-        Gráfico 2D: f(x) = {function1}
+        <span className="text-blue-600">f(x) = {function1}</span>
         {hasSecondFunction && (
-          <span className="block text-sm text-gray-600 mt-1">
+          <span className="block text-sm text-green-600 mt-1">
             g(x) = {function2}
           </span>
         )}
@@ -120,17 +120,17 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
               <Line 
                 type="monotone" 
                 dataKey="y1" 
-                stroke="#2563eb" 
-                strokeWidth={3}
+                stroke="#1e40af" 
+                strokeWidth={4}
                 dot={false}
                 name="f(x)"
               />
-              {/* Segunda função - linha vermelha mais espessa */}
+              {/* Segunda função - linha verde mais espessa */}
               <Line 
                 type="monotone" 
                 dataKey="y2" 
-                stroke="#dc2626" 
-                strokeWidth={3}
+                stroke="#16a34a" 
+                strokeWidth={4}
                 dot={false}
                 name="g(x)"
               />
@@ -163,8 +163,8 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
               <Line 
                 type="monotone" 
                 dataKey="y1" 
-                stroke="#2563eb" 
-                strokeWidth={3}
+                stroke="#1e40af" 
+                strokeWidth={4}
                 dot={false}
                 name="f(x)"
               />
