@@ -53,7 +53,6 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
 
   const hasSecondFunction = function2 && function2.trim() !== '';
 
-  // Calcular limites dos eixos Y com melhor lógica para incluir sempre o zero
   const { yMin, yMax } = useMemo(() => {
     if (data.length === 0) return { yMin: -5, yMax: 5 };
     
@@ -94,7 +93,6 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
     };
   }, [data, function1, function2]);
 
-  // Função para formatar valores dos eixos
   const formatAxisValue = (value: number, isX: boolean = false) => {
     if (Math.abs(value) < 0.0001) return '0';
     
@@ -112,7 +110,6 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
     return value.toFixed(3);
   };
 
-  // Gerar ticks personalizados para o eixo Y
   const generateYTicks = useMemo(() => {
     const functions = [function1, function2].filter(Boolean);
     const isTrigonometric = functions.some(f => f.includes('sin') || f.includes('cos'));
@@ -152,7 +149,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
 
   if (data.length === 0) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200 h-96">
+      <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200 h-96">
         <h3 className="text-lg font-semibold mb-4 text-gray-800">
           Gráfico 2D
         </h3>
@@ -164,8 +161,8 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
-      <div className="mb-4">
+    <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200">
+      <div className="mb-3">
         <h3 className="text-lg font-semibold text-gray-800">
           <span className="text-blue-600">f(x) = {function1}</span>
           {hasSecondFunction && (
@@ -179,9 +176,9 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
         </p>
       </div>
       
-      <div className="h-80 w-full">
+      <div className="h-96 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 20, right: 30, left: 50, bottom: 50 }}>
+          <LineChart data={data} margin={{ top: 10, right: 20, left: 20, bottom: 20 }}>
             <CartesianGrid strokeDasharray="2 2" stroke="#e0e7ff" />
             
             {/* Linha de referência para o eixo X (y=0) */}
@@ -203,7 +200,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
             <XAxis 
               dataKey="x" 
               stroke="#6366f1"
-              tick={{ fontSize: 12 }}
+              tick={{ fontSize: 11 }}
               axisLine={{ stroke: '#6366f1', strokeWidth: 2 }}
               tickLine={{ stroke: '#6366f1', strokeWidth: 1 }}
               domain={[xMin, xMax]}
@@ -213,7 +210,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
             />
             <YAxis 
               stroke="#6366f1"
-              tick={{ fontSize: 12 }}
+              tick={{ fontSize: 11 }}
               axisLine={{ stroke: '#6366f1', strokeWidth: 2 }}
               tickLine={{ stroke: '#6366f1', strokeWidth: 1 }}
               domain={[yMin, yMax]}
@@ -230,7 +227,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 backgroundColor: 'rgba(255, 255, 255, 0.95)',
                 border: '1px solid #e0e7ff',
                 borderRadius: '8px',
-                fontSize: '12px'
+                fontSize: '11px'
               }}
             />
             
