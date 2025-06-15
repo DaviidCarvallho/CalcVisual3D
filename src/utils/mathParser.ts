@@ -12,7 +12,7 @@ export const parseMathFunction = (functionStr: string): string => {
     .trim()
     // Substituir operadores matemáticos primeiro
     .replace(/\^/g, '**')
-    // Substituir funções matemáticas - CORRIGIDO: sem * após o nome da função
+    // Substituir funções matemáticas com parênteses
     .replace(/\bsin\s*\(/g, 'Math.sin(')
     .replace(/\bcos\s*\(/g, 'Math.cos(')
     .replace(/\btan\s*\(/g, 'Math.tan(')
@@ -21,7 +21,7 @@ export const parseMathFunction = (functionStr: string): string => {
     .replace(/\bln\s*\(/g, 'Math.log(')
     .replace(/\bsqrt\s*\(/g, 'Math.sqrt(')
     .replace(/\babs\s*\(/g, 'Math.abs(')
-    // Tratar funções sem parênteses (como sin x, cos x) - CORRIGIDO
+    // Tratar funções sem parênteses (como sin x, cos x)
     .replace(/\bsin\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.sin($1)')
     .replace(/\bcos\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.cos($1)')
     .replace(/\btan\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.tan($1)')
@@ -29,19 +29,26 @@ export const parseMathFunction = (functionStr: string): string => {
     .replace(/\bsqrt\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.sqrt($1)')
     .replace(/\babs\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.abs($1)')
     .replace(/\blog\s+([x\d\.\-\+\*\/\(\)]+)/g, 'Math.log($1)')
-    // Adicionar multiplicação implícita
-    .replace(/(\d+)([a-z])/g, '$1*$2')
+    // Substituir constantes matemáticas
+    .replace(/\bpi\b/g, 'Math.PI')
+    .replace(/\be\b/g, 'Math.E')
+    // Substituir notações especiais
+    .replace(/x²/g, 'x**2')
+    .replace(/x³/g, 'x**3')
+    // Adicionar multiplicação implícita DEPOIS das funções matemáticas
+    // Evitar interferir com Math.sin, Math.cos, etc.
+    .replace(/(\d+)([a-z])/g, (match, num, letter) => {
+      // Não adicionar * se for parte de Math.algo
+      if (letter === 'h' && expr.substring(expr.indexOf(match) - 4, expr.indexOf(match)) === 'Mat') {
+        return match; // Não modificar Math.algo
+      }
+      return `${num}*${letter}`;
+    })
     .replace(/([a-z])(\d+)/g, '$1*$2')
     .replace(/\)([a-z])/g, ')*$1')
     .replace(/([a-z])\(/g, '$1*(')
     .replace(/(\d+)\(/g, '$1*(')
-    .replace(/\)(\d+)/g, ')*$1')
-    // Substituir notações especiais
-    .replace(/x²/g, 'x**2')
-    .replace(/x³/g, 'x**3')
-    // Adicionar constantes matemáticas
-    .replace(/\bpi\b/g, 'Math.PI')
-    .replace(/\be\b/g, 'Math.E');
+    .replace(/\)(\d+)/g, ')*$1');
   
   console.log('Função parseada:', functionStr, '->', expr);
   return expr;
