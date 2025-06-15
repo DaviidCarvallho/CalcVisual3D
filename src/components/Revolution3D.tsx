@@ -1,3 +1,4 @@
+
 import React, { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text, Grid } from '@react-three/drei';
@@ -62,22 +63,23 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
       
       return { geometry, secondGeometry: null, regionGeometry: null };
     } else if (hasSecondFunction) {
-      // Criar sólido de revolução da área entre as duas funções
+      // Criar "tapete" 3D da área entre as duas funções
       const areaResult = calculateAreaBetweenCurves(functionStr, function2, xMin, xMax);
       const effectiveXMin = areaResult.effectiveXMin;
       const effectiveXMax = areaResult.effectiveXMax;
       
-      console.log('Criando sólido de revolução para área entre funções:', effectiveXMin, effectiveXMax);
+      console.log('Criando tapete 3D para área entre funções:', effectiveXMin, effectiveXMax);
       
-      const segments = 100;
+      const segments = 50;
       const step = (effectiveXMax - effectiveXMin) / segments;
       
-      // Pontos para as duas funções (apenas para linhas)
+      // Pontos para as duas funções (linhas)
       const points1 = [];
       const points2 = [];
       
-      // Pontos para o sólido de revolução da área
-      const revolutionPoints = [];
+      // Criar geometria do "tapete" que representa a área
+      const carpetVertices = [];
+      const carpetIndices = [];
       
       for (let i = 0; i <= segments; i++) {
         const x = effectiveXMin + i * step;
@@ -93,30 +95,29 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
           points1.push(new THREE.Vector3(scaledX, scaledY1, 0));
           points2.push(new THREE.Vector3(scaledX, scaledY2, 0));
           
-          // Para o sólido de revolução, usar a diferença entre as funções
-          const upperY = Math.max(y1, y2);
-          const lowerY = Math.min(y1, y2);
-          const heightDiff = Math.abs(upperY - lowerY);
+          // Vértices do tapete - criar uma superfície entre as duas funções
+          carpetVertices.push(scaledX, scaledY1, 0); // Ponto na primeira função
+          carpetVertices.push(scaledX, scaledY2, 0); // Ponto na segunda função
           
-          // Criar pontos para o sólido de revolução baseado na altura da área
-          if (heightDiff > 0.01) {
-            const scaledHeight = Math.min(2, heightDiff * 0.3);
-            const zPosition = scaledX;
-            revolutionPoints.push(new THREE.Vector2(scaledHeight, zPosition));
+          // Criar triângulos para conectar os pontos
+          if (i > 0) {
+            const baseIndex = (i * 2) - 2;
+            
+            // Primeiro triângulo
+            carpetIndices.push(baseIndex, baseIndex + 1, baseIndex + 2);
+            // Segundo triângulo
+            carpetIndices.push(baseIndex + 1, baseIndex + 3, baseIndex + 2);
           }
         }
       }
       
-      // Criar geometria do sólido de revolução
-      let revolutionGeometry = null;
-      if (revolutionPoints.length > 2) {
-        // Adicionar pontos de fechamento
-        const firstPoint = revolutionPoints[0];
-        const lastPoint = revolutionPoints[revolutionPoints.length - 1];
-        revolutionPoints.unshift(new THREE.Vector2(0.01, firstPoint.y));
-        revolutionPoints.push(new THREE.Vector2(0.01, lastPoint.y));
-        
-        revolutionGeometry = new THREE.LatheGeometry(revolutionPoints, 32);
+      // Criar geometria do tapete
+      let carpetGeometry = null;
+      if (carpetVertices.length > 0) {
+        carpetGeometry = new THREE.BufferGeometry();
+        carpetGeometry.setAttribute('position', new THREE.Float32BufferAttribute(carpetVertices, 3));
+        carpetGeometry.setIndex(carpetIndices);
+        carpetGeometry.computeVertexNormals();
       }
       
       // Geometrias das linhas das funções
@@ -126,7 +127,7 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
       return { 
         geometry: geometry1, 
         secondGeometry: geometry2, 
-        regionGeometry: revolutionGeometry 
+        regionGeometry: carpetGeometry 
       };
     } else {
       // Representação 2D de uma função no espaço 3D
@@ -179,13 +180,13 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
         </mesh>
       ) : hasSecondFunction ? (
         <>
-          {/* Sólido de revolução da área entre as funções */}
+          {/* Tapete 3D representando a área entre as funções */}
           {regionGeometry && (
             <mesh ref={meshRef} geometry={regionGeometry} position={[0, 0, 0]}>
               <meshStandardMaterial 
                 color="#22c55e" 
                 transparent 
-                opacity={0.7}
+                opacity={0.6}
                 side={THREE.DoubleSide}
                 roughness={0.3}
                 metalness={0.1}
@@ -225,7 +226,7 @@ const Revolution3D = (props: Revolution3DProps) => {
       <div className="absolute top-4 left-4 z-10 text-white">
         <h3 className="text-lg font-semibold">
           {props.showRevolution && !hasSecondFunction ? 'Sólido de Revolução 3D' : 
-           hasSecondFunction ? 'Região 3D entre Interseções' : 'Visualização 3D'}
+           hasSecondFunction ? 'Área 3D entre Funções' : 'Visualização 3D'}
         </h3>
         <p className="text-sm text-gray-300">
           f(x) = {props.functionStr}
@@ -242,7 +243,7 @@ const Revolution3D = (props: Revolution3DProps) => {
         )}
         {hasSecondFunction && (
           <p className="text-xs text-gray-400 mt-1">
-            Região delimitada pelas interseções
+            Tapete 3D da área entre funções
           </p>
         )}
       </div>

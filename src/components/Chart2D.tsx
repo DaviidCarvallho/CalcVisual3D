@@ -71,13 +71,17 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
   const areaChartData = useMemo(() => {
     if (!areaData) return data;
     
-    // Filtrar dados apenas na região entre interseções
+    // Filtrar dados apenas na região entre interseções e calcular área absoluta
     return data.map(point => {
       if (point.x >= areaData.effectiveXMin && point.x <= areaData.effectiveXMax && point.y2 !== undefined) {
+        // Calcular a área absoluta entre as funções (sempre positiva)
+        const diff = Math.abs(point.y1 - point.y2);
+        const lowerY = Math.min(point.y1, point.y2);
+        
         return {
           ...point,
-          upperY: Math.max(point.y1, point.y2),
-          lowerY: Math.min(point.y1, point.y2)
+          areaHeight: diff, // Altura da área (sempre positiva)
+          areaBase: lowerY   // Base da área (pode ser negativa)
         };
       }
       return point;
@@ -276,25 +280,26 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 }}
               />
               
-              {/* Área entre as curvas apenas na região das interseções */}
-              <Area 
-                type="monotone" 
-                dataKey="upperY" 
-                stackId="1"
-                stroke="none"
-                fill="rgba(34, 197, 94, 0.3)"
-                fillOpacity={0.6}
-              />
-              <Area 
-                type="monotone" 
-                dataKey="lowerY" 
-                stackId="1"
-                stroke="none"
-                fill="rgba(255, 255, 255, 1)"
-                fillOpacity={1}
-              />
+              {/* Área entre as curvas usando stackedArea customizada */}
+              {areaChartData.map((point, index) => {
+                if (point.areaHeight && point.x >= areaData!.effectiveXMin && point.x <= areaData!.effectiveXMax) {
+                  return (
+                    <Area
+                      key={index}
+                      type="monotone"
+                      dataKey="areaHeight"
+                      stackId="area"
+                      stroke="none"
+                      fill="rgba(34, 197, 94, 0.4)"
+                      fillOpacity={0.6}
+                      baseValue={point.areaBase}
+                    />
+                  );
+                }
+                return null;
+              })}
               
-              {/* Linhas das funções com cores corretas */}
+              {/* Linhas das funções */}
               <Line 
                 type="monotone" 
                 dataKey="y1" 
