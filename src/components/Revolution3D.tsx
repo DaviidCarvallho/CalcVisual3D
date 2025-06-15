@@ -62,22 +62,21 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
       
       return { geometry, secondGeometry: null, regionGeometry: null };
     } else if (hasSecondFunction) {
-      // Criar tapete 3D da área entre duas funções
+      // Criar área 3D entre duas funções com possível sólido de revolução
       const areaResult = calculateAreaBetweenCurves(functionStr, function2, xMin, xMax);
       const effectiveXMin = areaResult.effectiveXMin;
       const effectiveXMax = areaResult.effectiveXMax;
       
-      console.log('Criando tapete 3D para área entre funções:', effectiveXMin, effectiveXMax);
+      console.log('Criando área 3D para funções:', effectiveXMin, effectiveXMax);
       
-      const segments = 50;
+      const segments = 80;
       const step = (effectiveXMax - effectiveXMin) / segments;
       
-      // Criar geometria do tapete como uma superfície
-      const carpetVertices = [];
-      const carpetIndices = [];
-      const carpetUvs = [];
+      // Criar geometria da área no plano XZ (alinhada com as linhas das funções)
+      const areaVertices = [];
+      const areaIndices = [];
+      const areaUvs = [];
       
-      // Gerar pontos do tapete no plano XY (não YZ)
       for (let i = 0; i <= segments; i++) {
         const x = effectiveXMin + i * step;
         const y1 = evaluateFunction(functionStr, x);
@@ -91,46 +90,40 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
           const lowerY = Math.min(scaledY1, scaledY2);
           const upperY = Math.max(scaledY1, scaledY2);
           
-          // Criar 4 vértices para formar um quadrilátero vertical
-          // representando a área neste ponto x
+          // Criar vértices para a área no plano XY (alinhado com as linhas das funções)
           const baseIndex = i * 4;
           
-          // Vértices no plano XY com pequena profundidade em Z
-          carpetVertices.push(
-            scaledX, lowerY, -0.02,  // inferior frente
-            scaledX, upperY, -0.02,  // superior frente
-            scaledX, upperY, 0.02,   // superior trás
-            scaledX, lowerY, 0.02    // inferior trás
+          // Vértices no mesmo plano das linhas das funções
+          areaVertices.push(
+            scaledX, lowerY, -0.01,  // inferior frente
+            scaledX, upperY, -0.01,  // superior frente
+            scaledX, upperY, 0.01,   // superior trás
+            scaledX, lowerY, 0.01    // inferior trás
           );
           
-          // UVs para textura
-          carpetUvs.push(
-            0, 0,
-            0, 1,
-            1, 1,
-            1, 0
-          );
+          areaUvs.push(0, 0, 0, 1, 1, 1, 1, 0);
           
           // Criar faces do quadrilátero
-          carpetIndices.push(
-            // Face frontal
-            baseIndex, baseIndex + 1, baseIndex + 2,
-            baseIndex, baseIndex + 2, baseIndex + 3,
-            // Face traseira (invertida)
-            baseIndex + 3, baseIndex + 2, baseIndex + 1,
-            baseIndex + 3, baseIndex + 1, baseIndex
-          );
-          
-          // Conectar com o quadrilátero anterior
           if (i > 0) {
             const prevBase = (i - 1) * 4;
             
-            // Conectar faces laterais
-            carpetIndices.push(
-              // Lateral superior
+            // Face frontal
+            areaIndices.push(
+              prevBase, baseIndex, prevBase + 1,
+              baseIndex, baseIndex + 1, prevBase + 1
+            );
+            
+            // Face traseira
+            areaIndices.push(
+              prevBase + 3, prevBase + 2, baseIndex + 3,
+              prevBase + 2, baseIndex + 2, baseIndex + 3
+            );
+            
+            // Faces superior e inferior
+            areaIndices.push(
               prevBase + 1, baseIndex + 1, prevBase + 2,
               baseIndex + 1, baseIndex + 2, prevBase + 2,
-              // Lateral inferior
+              
               prevBase, prevBase + 3, baseIndex,
               prevBase + 3, baseIndex + 3, baseIndex
             );
@@ -138,17 +131,17 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
         }
       }
       
-      // Criar geometria do tapete
-      let carpetGeometry = null;
-      if (carpetVertices.length > 0) {
-        carpetGeometry = new THREE.BufferGeometry();
-        carpetGeometry.setAttribute('position', new THREE.Float32BufferAttribute(carpetVertices, 3));
-        carpetGeometry.setAttribute('uv', new THREE.Float32BufferAttribute(carpetUvs, 2));
-        carpetGeometry.setIndex(carpetIndices);
-        carpetGeometry.computeVertexNormals();
+      // Criar geometria da área
+      let areaGeometry = null;
+      if (areaVertices.length > 0) {
+        areaGeometry = new THREE.BufferGeometry();
+        areaGeometry.setAttribute('position', new THREE.Float32BufferAttribute(areaVertices, 3));
+        areaGeometry.setAttribute('uv', new THREE.Float32BufferAttribute(areaUvs, 2));
+        areaGeometry.setIndex(areaIndices);
+        areaGeometry.computeVertexNormals();
       }
       
-      // Geometrias das linhas das funções
+      // Geometrias das linhas das funções (no mesmo plano)
       const points1 = [];
       const points2 = [];
       
@@ -162,8 +155,9 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
           const scaledY1 = Math.max(-3, Math.min(3, y1 * 0.5));
           const scaledY2 = Math.max(-3, Math.min(3, y2 * 0.5));
           
-          points1.push(new THREE.Vector3(scaledX, scaledY1, 0.1));
-          points2.push(new THREE.Vector3(scaledX, scaledY2, 0.1));
+          // Linhas no mesmo plano da área
+          points1.push(new THREE.Vector3(scaledX, scaledY1, 0.02));
+          points2.push(new THREE.Vector3(scaledX, scaledY2, 0.02));
         }
       }
       
@@ -173,7 +167,7 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
       return { 
         geometry: geometry1, 
         secondGeometry: geometry2, 
-        regionGeometry: carpetGeometry 
+        regionGeometry: areaGeometry 
       };
     } else {
       // Representação 2D de uma função no espaço 3D
@@ -206,8 +200,11 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
     if (meshRef.current && showRevolution && !hasSecondFunction) {
       meshRef.current.rotation.y += 0.005;
     }
-    if (groupRef.current && hasSecondFunction && regionGeometry) {
-      groupRef.current.rotation.y += 0.003;
+    // Rotação para área entre funções quando showRevolution está ativo
+    if (groupRef.current && hasSecondFunction && showRevolution) {
+      groupRef.current.rotation.x += 0.005; // Girar em torno do eixo X
+    } else if (groupRef.current && hasSecondFunction && !showRevolution) {
+      groupRef.current.rotation.y += 0.003; // Rotação suave quando não é revolução
     }
   });
 
@@ -226,13 +223,13 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
         </mesh>
       ) : hasSecondFunction ? (
         <>
-          {/* Tapete 3D representando a área entre as funções */}
+          {/* Área entre as funções - agora alinhada corretamente */}
           {regionGeometry && (
             <mesh ref={meshRef} geometry={regionGeometry} position={[0, 0, 0]}>
               <meshStandardMaterial 
                 color="#22c55e" 
                 transparent 
-                opacity={0.8}
+                opacity={0.7}
                 side={THREE.DoubleSide}
                 roughness={0.3}
                 metalness={0.1}
@@ -272,7 +269,8 @@ const Revolution3D = (props: Revolution3DProps) => {
       <div className="absolute top-4 left-4 z-10 text-white">
         <h3 className="text-lg font-semibold">
           {props.showRevolution && !hasSecondFunction ? 'Sólido de Revolução 3D' : 
-           hasSecondFunction ? 'Tapete 3D da Área' : 'Visualização 3D'}
+           props.showRevolution && hasSecondFunction ? 'Sólido de Revolução da Área' :
+           hasSecondFunction ? 'Área 3D entre Funções' : 'Visualização 3D'}
         </h3>
         <p className="text-sm text-gray-300">
           f(x) = {props.functionStr}
@@ -282,14 +280,14 @@ const Revolution3D = (props: Revolution3DProps) => {
             g(x) = {props.function2}
           </p>
         )}
-        {props.showRevolution && !hasSecondFunction && (
+        {props.showRevolution && (
           <p className="text-xs text-gray-400 mt-1">
-            Rotação em torno do eixo X
+            {hasSecondFunction ? 'Revolução da área em torno do eixo X' : 'Rotação em torno do eixo X'}
           </p>
         )}
-        {hasSecondFunction && (
+        {hasSecondFunction && !props.showRevolution && (
           <p className="text-xs text-gray-400 mt-1">
-            Tapete 3D da área |f(x) - g(x)|
+            Área 3D entre as funções
           </p>
         )}
       </div>
