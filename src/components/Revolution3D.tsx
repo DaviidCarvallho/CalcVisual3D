@@ -19,7 +19,7 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
 
   const hasSecondFunction = function2 && function2.trim() !== '';
 
-  const { geometry, secondGeometry, regionGeometry } = useMemo(() => {
+  const { geometry, secondGeometry, regionGeometry, solidGeometry, innerSolidGeometry } = useMemo(() => {
     if (showRevolution && !hasSecondFunction) {
       // Lógica original para sólido de revolução de uma função
       const points = [];
@@ -60,22 +60,30 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
 
       const geometry = new THREE.LatheGeometry(points, 32);
       
-      return { geometry, secondGeometry: null, regionGeometry: null };
+      return { geometry, secondGeometry: null, regionGeometry: null, solidGeometry: null, innerSolidGeometry: null };
     } else if (hasSecondFunction) {
-      // Criar área 3D entre duas funções com possível sólido de revolução
+      // Criar área 2D e sólido de revolução para duas funções
       const areaResult = calculateAreaBetweenCurves(functionStr, function2, xMin, xMax);
       const effectiveXMin = areaResult.effectiveXMin;
       const effectiveXMax = areaResult.effectiveXMax;
       
-      console.log('Criando área 3D para funções:', effectiveXMin, effectiveXMax);
+      console.log('Criando sólido de revolução para duas funções:', effectiveXMin, effectiveXMax);
       
       const segments = 80;
       const step = (effectiveXMax - effectiveXMin) / segments;
       
-      // Criar geometria da área no plano XZ (alinhada com as linhas das funções)
+      // Criar geometria da área no plano XY para visualização 2D
       const areaVertices = [];
       const areaIndices = [];
       const areaUvs = [];
+      
+      // Pontos para as linhas das funções
+      const points1 = [];
+      const points2 = [];
+      
+      // Pontos para o sólido de revolução
+      const outerPoints = []; // Função superior
+      const innerPoints = []; // Função inferior
       
       for (let i = 0; i <= segments; i++) {
         const x = effectiveXMin + i * step;
@@ -90,10 +98,22 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
           const lowerY = Math.min(scaledY1, scaledY2);
           const upperY = Math.max(scaledY1, scaledY2);
           
-          // Criar vértices para a área no plano XY (alinhado com as linhas das funções)
+          // Pontos das linhas das funções
+          points1.push(new THREE.Vector3(scaledX, scaledY1, 0.02));
+          points2.push(new THREE.Vector3(scaledX, scaledY2, 0.02));
+          
+          // Pontos para o sólido de revolução (usar valores absolutos dos raios)
+          const outerRadius = Math.abs(upperY);
+          const innerRadius = Math.abs(lowerY);
+          
+          // Para o sólido de revolução, usamos o eixo X como eixo de rotação
+          // Então x vira a posição ao longo do eixo, e y vira o raio
+          outerPoints.push(new THREE.Vector2(outerRadius, scaledX));
+          innerPoints.push(new THREE.Vector2(innerRadius, scaledX));
+          
+          // Criar área 2D no plano XY
           const baseIndex = i * 4;
           
-          // Vértices no mesmo plano das linhas das funções
           areaVertices.push(
             scaledX, lowerY, -0.01,  // inferior frente
             scaledX, upperY, -0.01,  // superior frente
@@ -103,7 +123,6 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
           
           areaUvs.push(0, 0, 0, 1, 1, 1, 1, 0);
           
-          // Criar faces do quadrilátero
           if (i > 0) {
             const prevBase = (i - 1) * 4;
             
@@ -131,7 +150,7 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
         }
       }
       
-      // Criar geometria da área
+      // Criar geometria da área 2D
       let areaGeometry = null;
       if (areaVertices.length > 0) {
         areaGeometry = new THREE.BufferGeometry();
@@ -141,33 +160,42 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
         areaGeometry.computeVertexNormals();
       }
       
-      // Geometrias das linhas das funções (no mesmo plano)
-      const points1 = [];
-      const points2 = [];
+      // Criar sólidos de revolução quando showRevolution está ativo
+      let outerSolid = null;
+      let innerSolid = null;
       
-      for (let i = 0; i <= segments; i++) {
-        const x = effectiveXMin + i * step;
-        const y1 = evaluateFunction(functionStr, x);
-        const y2 = evaluateFunction(function2, x);
+      if (showRevolution && outerPoints.length > 0 && innerPoints.length > 0) {
+        console.log('Criando sólidos de revolução...');
+        console.log('Pontos externos:', outerPoints.length);
+        console.log('Pontos internos:', innerPoints.length);
         
-        if (!isNaN(y1) && !isNaN(y2) && isFinite(y1) && isFinite(y2)) {
-          const scaledX = (x - effectiveXMin) / (effectiveXMax - effectiveXMin) * 4 - 2;
-          const scaledY1 = Math.max(-3, Math.min(3, y1 * 0.5));
-          const scaledY2 = Math.max(-3, Math.min(3, y2 * 0.5));
-          
-          // Linhas no mesmo plano da área
-          points1.push(new THREE.Vector3(scaledX, scaledY1, 0.02));
-          points2.push(new THREE.Vector3(scaledX, scaledY2, 0.02));
+        // Criar superfície externa
+        try {
+          outerSolid = new THREE.LatheGeometry(outerPoints, 32);
+          console.log('Superfície externa criada');
+        } catch (e) {
+          console.error('Erro ao criar superfície externa:', e);
+        }
+        
+        // Criar superfície interna
+        try {
+          innerSolid = new THREE.LatheGeometry(innerPoints, 32);
+          console.log('Superfície interna criada');
+        } catch (e) {
+          console.error('Erro ao criar superfície interna:', e);
         }
       }
       
+      // Geometrias das linhas das funções
       const geometry1 = new THREE.BufferGeometry().setFromPoints(points1);
       const geometry2 = new THREE.BufferGeometry().setFromPoints(points2);
       
       return { 
         geometry: geometry1, 
         secondGeometry: geometry2, 
-        regionGeometry: areaGeometry 
+        regionGeometry: areaGeometry,
+        solidGeometry: outerSolid,
+        innerSolidGeometry: innerSolid
       };
     } else {
       // Representação 2D de uma função no espaço 3D
@@ -192,7 +220,7 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
       }
 
       const geometry = new THREE.BufferGeometry().setFromPoints(points);
-      return { geometry, secondGeometry: null, regionGeometry: null };
+      return { geometry, secondGeometry: null, regionGeometry: null, solidGeometry: null, innerSolidGeometry: null };
     }
   }, [functionStr, function2, xMin, xMax, showRevolution, hasSecondFunction]);
 
@@ -200,17 +228,20 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
     if (meshRef.current && showRevolution && !hasSecondFunction) {
       meshRef.current.rotation.y += 0.005;
     }
-    // Rotação para área entre funções quando showRevolution está ativo
-    if (groupRef.current && hasSecondFunction && showRevolution) {
-      groupRef.current.rotation.x += 0.005; // Girar em torno do eixo X
-    } else if (groupRef.current && hasSecondFunction && !showRevolution) {
-      groupRef.current.rotation.y += 0.003; // Rotação suave quando não é revolução
+    // Rotação suave para o grupo quando há duas funções
+    if (groupRef.current && hasSecondFunction) {
+      if (showRevolution) {
+        groupRef.current.rotation.y += 0.005; // Rotação mais lenta para visualizar o sólido
+      } else {
+        groupRef.current.rotation.y += 0.003;
+      }
     }
   });
 
   return (
     <group ref={groupRef}>
       {showRevolution && !hasSecondFunction ? (
+        // Renderizar sólido de revolução para uma função
         <mesh ref={meshRef} geometry={geometry} position={[0, 0, 0]}>
           <meshStandardMaterial 
             color="#3b82f6" 
@@ -223,35 +254,86 @@ const RegionMesh = ({ functionStr, function2, xMin, xMax, showRevolution }: Revo
         </mesh>
       ) : hasSecondFunction ? (
         <>
-          {/* Área entre as funções - agora alinhada corretamente */}
-          {regionGeometry && (
-            <mesh ref={meshRef} geometry={regionGeometry} position={[0, 0, 0]}>
-              <meshStandardMaterial 
-                color="#22c55e" 
-                transparent 
-                opacity={0.7}
-                side={THREE.DoubleSide}
-                roughness={0.3}
-                metalness={0.1}
-              />
-            </mesh>
-          )}
-          
-          {/* Linha da primeira função */}
-          <primitive object={new THREE.Line(geometry, new THREE.LineBasicMaterial({ 
-            color: "#2563eb", 
-            linewidth: 4 
-          }))} />
-          
-          {/* Linha da segunda função */}
-          {secondGeometry && (
-            <primitive object={new THREE.Line(secondGeometry, new THREE.LineBasicMaterial({ 
-              color: "#dc2626", 
-              linewidth: 4 
-            }))} />
+          {showRevolution ? (
+            // Renderizar sólidos de revolução
+            <>
+              {/* Superfície externa do sólido */}
+              {solidGeometry && (
+                <mesh geometry={solidGeometry} position={[0, 0, 0]}>
+                  <meshStandardMaterial 
+                    color="#3b82f6" 
+                    transparent 
+                    opacity={0.7}
+                    side={THREE.DoubleSide}
+                    roughness={0.3}
+                    metalness={0.2}
+                  />
+                </mesh>
+              )}
+              
+              {/* Superfície interna do sólido (cavidade) */}
+              {innerSolidGeometry && (
+                <mesh geometry={innerSolidGeometry} position={[0, 0, 0]}>
+                  <meshStandardMaterial 
+                    color="#dc2626" 
+                    transparent 
+                    opacity={0.6}
+                    side={THREE.BackSide}
+                    roughness={0.4}
+                    metalness={0.1}
+                  />
+                </mesh>
+              )}
+              
+              {/* Manter as linhas das funções visíveis */}
+              <primitive object={new THREE.Line(geometry, new THREE.LineBasicMaterial({ 
+                color: "#2563eb", 
+                linewidth: 2,
+                transparent: true,
+                opacity: 0.8
+              }))} />
+              
+              {secondGeometry && (
+                <primitive object={new THREE.Line(secondGeometry, new THREE.LineBasicMaterial({ 
+                  color: "#dc2626", 
+                  linewidth: 2,
+                  transparent: true,
+                  opacity: 0.8
+                }))} />
+              )}
+            </>
+          ) : (
+            // Renderizar área 2D entre funções
+            <>
+              {regionGeometry && (
+                <mesh ref={meshRef} geometry={regionGeometry} position={[0, 0, 0]}>
+                  <meshStandardMaterial 
+                    color="#22c55e" 
+                    transparent 
+                    opacity={0.7}
+                    side={THREE.DoubleSide}
+                    roughness={0.3}
+                    metalness={0.1}
+                  />
+                </mesh>
+              )}
+              
+              <primitive object={new THREE.Line(geometry, new THREE.LineBasicMaterial({ 
+                color: "#2563eb", 
+                linewidth: 4 
+              }))} />
+              
+              {secondGeometry && (
+                <primitive object={new THREE.Line(secondGeometry, new THREE.LineBasicMaterial({ 
+                  color: "#dc2626", 
+                  linewidth: 4 
+                }))} />
+              )}
+            </>
           )}
         </>
       ) : (
+        // Renderizar linha da função única
         <primitive object={new THREE.Line(geometry, new THREE.LineBasicMaterial({ 
           color: "#3b82f6", 
           linewidth: 3 
@@ -269,7 +351,7 @@ const Revolution3D = (props: Revolution3DProps) => {
       <div className="absolute top-4 left-4 z-10 text-white">
         <h3 className="text-lg font-semibold">
           {props.showRevolution && !hasSecondFunction ? 'Sólido de Revolução 3D' : 
-           props.showRevolution && hasSecondFunction ? 'Sólido de Revolução da Área' :
+           props.showRevolution && hasSecondFunction ? 'Sólido de Revolução entre Funções' :
            hasSecondFunction ? 'Área 3D entre Funções' : 'Visualização 3D'}
         </h3>
         <p className="text-sm text-gray-300">
@@ -282,7 +364,7 @@ const Revolution3D = (props: Revolution3DProps) => {
         )}
         {props.showRevolution && (
           <p className="text-xs text-gray-400 mt-1">
-            {hasSecondFunction ? 'Revolução da área em torno do eixo X' : 'Rotação em torno do eixo X'}
+            {hasSecondFunction ? 'Volume formado pela rotação da área em torno do eixo X' : 'Rotação em torno do eixo X'}
           </p>
         )}
         {hasSecondFunction && !props.showRevolution && (
