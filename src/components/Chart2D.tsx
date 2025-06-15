@@ -40,7 +40,8 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
         
         if (y2 !== null && !isNaN(y2) && isFinite(y2)) {
           point.y2 = Number(y2.toFixed(3));
-          point.area = Math.abs(y1 - y2); // Área entre as funções
+          // Calcular a área entre as funções corretamente
+          point.area = Math.max(y1, y2) - Math.min(y1, y2);
         }
         
         points.push(point);
@@ -67,7 +68,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200 h-96">
+    <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
       <h3 className="text-lg font-semibold mb-4 text-gray-800">
         Gráfico 2D: f(x) = {function1}
         {hasSecondFunction && (
@@ -76,74 +77,101 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
           </span>
         )}
       </h3>
-      <ResponsiveContainer width="100%" height="100%">
-        {hasSecondFunction ? (
-          <AreaChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
-            <XAxis 
-              dataKey="x" 
-              stroke="#6366f1"
-              tick={{ fontSize: 12 }}
-            />
-            <YAxis 
-              stroke="#6366f1"
-              tick={{ fontSize: 12 }}
-            />
-            <Tooltip 
-              formatter={(value: number, name: string) => [
-                value.toFixed(3), 
-                name === 'y1' ? 'f(x)' : name === 'y2' ? 'g(x)' : 'Área'
-              ]}
-              labelFormatter={(value: number) => `x = ${value.toFixed(3)}`}
-            />
-            <Area
-              type="monotone"
-              dataKey="area"
-              stroke="rgba(255, 165, 0, 0.8)"
-              fill="rgba(255, 165, 0, 0.3)"
-              fillOpacity={0.3}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="y1" 
-              stroke="#3b82f6" 
-              strokeWidth={2}
-              dot={false}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="y2" 
-              stroke="#ef4444" 
-              strokeWidth={2}
-              dot={false}
-            />
-          </AreaChart>
-        ) : (
-          <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
-            <XAxis 
-              dataKey="x" 
-              stroke="#6366f1"
-              tick={{ fontSize: 12 }}
-            />
-            <YAxis 
-              stroke="#6366f1"
-              tick={{ fontSize: 12 }}
-            />
-            <Tooltip 
-              formatter={(value: number) => [value.toFixed(3), 'f(x)']}
-              labelFormatter={(value: number) => `x = ${value.toFixed(3)}`}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="y1" 
-              stroke="#3b82f6" 
-              strokeWidth={2}
-              dot={false}
-            />
-          </LineChart>
-        )}
-      </ResponsiveContainer>
+      <div className="h-80 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          {hasSecondFunction ? (
+            <AreaChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
+              <XAxis 
+                dataKey="x" 
+                stroke="#6366f1"
+                tick={{ fontSize: 12 }}
+                axisLine={{ stroke: '#6366f1' }}
+                tickLine={{ stroke: '#6366f1' }}
+              />
+              <YAxis 
+                stroke="#6366f1"
+                tick={{ fontSize: 12 }}
+                axisLine={{ stroke: '#6366f1' }}
+                tickLine={{ stroke: '#6366f1' }}
+              />
+              <Tooltip 
+                formatter={(value: number, name: string) => [
+                  value.toFixed(3), 
+                  name === 'y1' ? 'f(x)' : name === 'y2' ? 'g(x)' : 'Área entre funções'
+                ]}
+                labelFormatter={(value: number) => `x = ${value.toFixed(3)}`}
+                contentStyle={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                  border: '1px solid #e0e7ff',
+                  borderRadius: '8px'
+                }}
+              />
+              {/* Área entre as funções */}
+              <Area
+                type="monotone"
+                dataKey="area"
+                stroke="rgba(255, 165, 0, 0.8)"
+                fill="rgba(255, 165, 0, 0.4)"
+                fillOpacity={0.6}
+                strokeWidth={1}
+              />
+              {/* Primeira função - linha azul mais espessa */}
+              <Line 
+                type="monotone" 
+                dataKey="y1" 
+                stroke="#2563eb" 
+                strokeWidth={3}
+                dot={false}
+                name="f(x)"
+              />
+              {/* Segunda função - linha vermelha mais espessa */}
+              <Line 
+                type="monotone" 
+                dataKey="y2" 
+                stroke="#dc2626" 
+                strokeWidth={3}
+                dot={false}
+                name="g(x)"
+              />
+            </AreaChart>
+          ) : (
+            <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e0e7ff" />
+              <XAxis 
+                dataKey="x" 
+                stroke="#6366f1"
+                tick={{ fontSize: 12 }}
+                axisLine={{ stroke: '#6366f1' }}
+                tickLine={{ stroke: '#6366f1' }}
+              />
+              <YAxis 
+                stroke="#6366f1"
+                tick={{ fontSize: 12 }}
+                axisLine={{ stroke: '#6366f1' }}
+                tickLine={{ stroke: '#6366f1' }}
+              />
+              <Tooltip 
+                formatter={(value: number) => [value.toFixed(3), 'f(x)']}
+                labelFormatter={(value: number) => `x = ${value.toFixed(3)}`}
+                contentStyle={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                  border: '1px solid #e0e7ff',
+                  borderRadius: '8px'
+                }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="y1" 
+                stroke="#2563eb" 
+                strokeWidth={3}
+                dot={false}
+                name="f(x)"
+              />
+            </LineChart>
+          )}
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 };
