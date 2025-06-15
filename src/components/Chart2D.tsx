@@ -26,7 +26,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
 
     const points = [];
     const range = xMax - xMin;
-    const segments = Math.max(150, Math.min(300, Math.floor(range * 30))); // Reduzir segmentos para performance
+    const segments = Math.max(100, Math.min(200, Math.floor(range * 20))); // Otimizar performance
     const step = (xMax - xMin) / segments;
     
     for (let i = 0; i <= segments; i++) {
@@ -67,7 +67,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
     };
   }, [function1, function2, xMin, xMax, hasSecondFunction]);
 
-  // Gerar dados para a área entre as curvas
+  // Gerar dados corrigidos para a área entre as curvas
   const areaChartData = useMemo(() => {
     if (!areaData || !hasSecondFunction) return data;
     
@@ -76,21 +76,22 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
           point.x <= areaData.effectiveXMax && 
           point.y2 !== undefined) {
         
-        // A área deve ser preenchida entre as duas curvas
-        // Usar a função inferior como base e a superior como topo
+        // Corrigir: usar as funções diretamente para criar o preenchimento
+        // A função inferior será a base (baseValue) e a superior será o topo
         const lowerY = Math.min(point.y1, point.y2);
         const upperY = Math.max(point.y1, point.y2);
         
         return {
           ...point,
-          areaBase: Number(lowerY.toFixed(4)), // Base da área (função inferior)
-          areaHeight: Number((upperY - lowerY).toFixed(4)) // Altura da área
+          // Para o recharts funcionar corretamente com área:
+          areaLower: Number(lowerY.toFixed(4)), // Função inferior
+          areaUpper: Number(upperY.toFixed(4))  // Função superior
         };
       }
       return {
         ...point,
-        areaBase: null,
-        areaHeight: null
+        areaLower: null,
+        areaUpper: null
       };
     });
   }, [data, areaData, hasSecondFunction]);
@@ -133,6 +134,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
     };
   }, [data, function1, function2]);
 
+  // Formatação dos valores dos eixos
   const formatAxisValue = (value: number, isX: boolean = false) => {
     if (Math.abs(value) < 0.0001) return '0';
     
@@ -239,11 +241,11 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
             {/* Linhas de interseção mais visíveis */}
             {areaData?.intersections.map((intersection, index) => (
               <ReferenceLine 
-                key={index}
+                key={`intersection-${index}`}
                 x={intersection.x} 
                 stroke="#8b5cf6" 
-                strokeWidth={3} 
-                strokeDasharray="5 5" 
+                strokeWidth={4} 
+                strokeDasharray="6 6" 
               />
             ))}
             
@@ -253,14 +255,14 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 <ReferenceLine 
                   x={areaData.effectiveXMin} 
                   stroke="#22c55e" 
-                  strokeWidth={3} 
-                  strokeDasharray="3 3" 
+                  strokeWidth={4} 
+                  strokeDasharray="4 4" 
                 />
                 <ReferenceLine 
                   x={areaData.effectiveXMax} 
                   stroke="#22c55e" 
-                  strokeWidth={3} 
-                  strokeDasharray="3 3" 
+                  strokeWidth={4} 
+                  strokeDasharray="4 4" 
                 />
               </>
             )}
@@ -291,10 +293,6 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                   return ['--', name];
                 }
                 
-                if (name === 'areaHeight') {
-                  return [formatAxisValue(Math.abs(value)), 'Altura da Área'];
-                }
-                
                 return [
                   formatAxisValue(value), 
                   name === 'y1' ? 'f(x)' : name === 'y2' ? 'g(x)' : name
@@ -314,17 +312,16 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
               }}
             />
             
-            {/* Área entre as curvas - usando stackedArea corretamente */}
+            {/* Área entre as curvas - CORRIGIDA para não aparecer invertida */}
             {hasSecondFunction && (
               <Area
                 type="monotone"
-                dataKey="areaHeight"
-                stackId="area"
+                dataKey="areaUpper"
                 stroke="none"
                 fill="rgba(34, 197, 94, 0.4)"
-                fillOpacity={0.8}
-                baseValue="dataMin"
+                fillOpacity={0.6}
                 connectNulls={false}
+                baseValue="areaLower" // Usar a função inferior como base
               />
             )}
             
