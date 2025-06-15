@@ -18,9 +18,8 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
   const [panY, setPanY] = useState(0);
 
   const { data, intersections } = useMemo(() => {
-    console.log('Gerando dados do gráfico com alta precisão:', { function1, function2, xMin, xMax });
+    console.log('Gerando dados do gráfico:', { function1, function2, xMin, xMax });
     
-    // Validar parâmetros de entrada
     if (!function1 || typeof function1 !== 'string') {
       console.error('function1 é inválida:', function1);
       return { data: [], intersections: [] };
@@ -33,8 +32,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
 
     const points = [];
     const intersectionPoints = [];
-    // Aumentar significativamente o número de pontos para melhor precisão
-    const segments = 500;
+    const segments = 200; // Reduzir para melhor performance
     const step = (xMax - xMin) / segments;
     
     for (let i = 0; i <= segments; i++) {
@@ -44,13 +42,12 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
       
       if (!isNaN(y1) && isFinite(y1)) {
         const point: any = { 
-          x: Number(x.toFixed(6)), 
-          y1: Number(y1.toFixed(6))
+          x: Number(x.toFixed(3)), 
+          y1: Number(y1.toFixed(3))
         };
         
         if (y2 !== null && !isNaN(y2) && isFinite(y2)) {
-          point.y2 = Number(y2.toFixed(6));
-          // Calcular a área entre as funções
+          point.y2 = Number(y2.toFixed(3));
           point.area = Math.abs(y1 - y2);
         }
         
@@ -58,11 +55,8 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
       }
     }
 
-    // Melhorar detecção de interseções com maior precisão
+    // Detecção simplificada de interseções
     if (function2) {
-      // Primeiro passo: encontrar intervalos onde há mudança de sinal
-      const potentialIntersections = [];
-      
       for (let i = 0; i < points.length - 1; i++) {
         const current = points[i];
         const next = points[i + 1];
@@ -73,148 +67,59 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
           const diff1 = current.y1 - current.y2;
           const diff2 = next.y1 - next.y2;
           
-          // Verificar mudança de sinal (interseção)
           if (diff1 * diff2 <= 0) {
-            potentialIntersections.push({
-              startX: current.x,
-              endX: next.x,
-              startDiff: diff1,
-              endDiff: diff2
-            });
-          }
-        }
-      }
-      
-      // Segundo passo: refinar cada interseção usando método da bisseção
-      for (const potential of potentialIntersections) {
-        let left = potential.startX;
-        let right = potential.endX;
-        let iterations = 0;
-        const maxIterations = 50;
-        
-        while (Math.abs(right - left) > 0.0001 && iterations < maxIterations) {
-          const mid = (left + right) / 2;
-          const y1Mid = evaluateFunction(function1, mid);
-          const y2Mid = evaluateFunction(function2, mid);
-          
-          if (!isNaN(y1Mid) && !isNaN(y2Mid) && isFinite(y1Mid) && isFinite(y2Mid)) {
-            const diffMid = y1Mid - y2Mid;
-            const diffLeft = evaluateFunction(function1, left) - evaluateFunction(function2, left);
+            const intersectionX = (current.x + next.x) / 2;
+            const intersectionY1 = evaluateFunction(function1, intersectionX);
+            const intersectionY2 = evaluateFunction(function2, intersectionX);
             
-            if (diffMid * diffLeft <= 0) {
-              right = mid;
-            } else {
-              left = mid;
+            if (!isNaN(intersectionY1) && !isNaN(intersectionY2)) {
+              intersectionPoints.push({
+                x: Number(intersectionX.toFixed(3)),
+                y: Number(((intersectionY1 + intersectionY2) / 2).toFixed(3))
+              });
             }
-          } else {
-            break;
           }
-          
-          iterations++;
-        }
-        
-        const finalX = (left + right) / 2;
-        const finalY1 = evaluateFunction(function1, finalX);
-        const finalY2 = evaluateFunction(function2, finalX);
-        
-        if (!isNaN(finalY1) && !isNaN(finalY2) && isFinite(finalY1) && isFinite(finalY2)) {
-          const avgY = (finalY1 + finalY2) / 2;
-          
-          intersectionPoints.push({
-            x: Number(finalX.toFixed(6)),
-            y: Number(avgY.toFixed(6))
-          });
         }
       }
     }
     
-    console.log(`Gerados ${points.length} pontos para o gráfico (alta precisão)`);
-    console.log(`Encontradas ${intersectionPoints.length} interseções precisas`);
+    console.log(`Gerados ${points.length} pontos para o gráfico`);
+    console.log(`Encontradas ${intersectionPoints.length} interseções`);
     return { data: points, intersections: intersectionPoints };
   }, [function1, function2, xMin, xMax]);
 
   const hasSecondFunction = function2 && function2.trim() !== '';
 
-  // Calcular domínio e range com zoom
   const effectiveXMin = (xMin / zoomLevel) + panX;
   const effectiveXMax = (xMax / zoomLevel) + panX;
 
-  // Gerar ticks dos eixos garantindo que não haja duplicatas e sempre incluindo o zero
-  const getXAxisTicks = (min: number, max: number) => {
+  const getAxisTicks = (min: number, max: number, isX: boolean = true) => {
     const ticks = new Set<number>();
+    ticks.add(0); // Sempre incluir zero
     
-    // Sempre incluir o zero se estiver no intervalo
-    if (min <= 0 && max >= 0) {
-      ticks.add(0);
-    }
-    
-    // Determinar intervalo baseado no zoom
     let step = 1;
     const range = max - min;
-    if (range > 20) step = Math.ceil(range / 20);
+    if (range > 20) step = Math.ceil(range / 10);
     else if (range < 5) step = 0.5;
     
-    // Adicionar ticks no intervalo
     const start = Math.floor(min / step) * step;
     const end = Math.ceil(max / step) * step;
     
     for (let i = start; i <= end; i += step) {
-      if (i >= min && i <= max) {
-        ticks.add(Number(i.toFixed(2)));
+      if (i >= min - step && i <= max + step) {
+        ticks.add(Math.round(i * 100) / 100);
       }
     }
     
-    // Converter para array ordenado
-    return Array.from(ticks).sort((a, b) => a - b);
-  };
-
-  const getYAxisTicks = (data: any[]) => {
-    if (data.length === 0) return [0];
-    
-    const ticks = new Set<number>();
-    
-    // Encontrar min e max dos dados
-    let yMin = Infinity;
-    let yMax = -Infinity;
-    
-    data.forEach(point => {
-      if (point.y1 !== undefined) {
-        yMin = Math.min(yMin, point.y1);
-        yMax = Math.max(yMax, point.y1);
-      }
-      if (point.y2 !== undefined) {
-        yMin = Math.min(yMin, point.y2);
-        yMax = Math.max(yMax, point.y2);
-      }
-    });
-    
-    // Sempre incluir o zero
-    ticks.add(0);
-    
-    // Determinar intervalo baseado no range
-    let step = 1;
-    const range = yMax - yMin;
-    if (range > 20) step = Math.ceil(range / 20);
-    else if (range < 5) step = 0.5;
-    
-    // Adicionar ticks no intervalo dos dados
-    const start = Math.floor(yMin / step) * step;
-    const end = Math.ceil(yMax / step) * step;
-    
-    for (let i = start; i <= end; i += step) {
-      ticks.add(Number(i.toFixed(2)));
-    }
-    
-    // Converter para array ordenado
     return Array.from(ticks).sort((a, b) => a - b);
   };
 
   const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(prev * 1.5, 10));
+    setZoomLevel(prev => Math.min(prev * 1.5, 5));
   };
 
   const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(prev / 1.5, 0.1));
+    setZoomLevel(prev => Math.max(prev / 1.5, 0.5));
   };
 
   const handleReset = () => {
@@ -227,7 +132,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
     return (
       <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200 h-96">
         <h3 className="text-lg font-semibold mb-4 text-gray-800">
-          Gráfico 2D (Alta Precisão)
+          Gráfico 2D
         </h3>
         <div className="flex items-center justify-center h-full text-gray-500">
           <p>Erro ao gerar dados do gráfico. Verifique as funções inseridas.</p>
@@ -235,9 +140,6 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
       </div>
     );
   }
-
-  const xTicks = getXAxisTicks(effectiveXMin, effectiveXMax);
-  const yTicks = getYAxisTicks(data);
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
@@ -252,7 +154,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
             )}
             {intersections.length > 0 && (
               <span className="block text-xs text-green-600 mt-1">
-                {intersections.length} interseção(ões) precisas encontrada(s)
+                {intersections.length} interseção(ões) encontrada(s)
               </span>
             )}
           </h3>
@@ -282,7 +184,6 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 tick={{ fontSize: 12 }}
                 axisLine={{ stroke: '#6366f1' }}
                 tickLine={{ stroke: '#6366f1' }}
-                ticks={xTicks}
                 domain={[effectiveXMin, effectiveXMax]}
                 type="number"
                 tickFormatter={(value) => value.toFixed(1)}
@@ -292,22 +193,20 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 tick={{ fontSize: 12 }}
                 axisLine={{ stroke: '#6366f1' }}
                 tickLine={{ stroke: '#6366f1' }}
-                ticks={yTicks}
                 tickFormatter={(value) => value.toFixed(1)}
               />
               <Tooltip 
                 formatter={(value: number, name: string) => [
-                  value.toFixed(4), 
+                  value.toFixed(3), 
                   name === 'y1' ? 'f(x)' : name === 'y2' ? 'g(x)' : 'Área entre funções'
                 ]}
-                labelFormatter={(value: number) => `x = ${value.toFixed(4)}`}
+                labelFormatter={(value: number) => `x = ${value.toFixed(3)}`}
                 contentStyle={{
                   backgroundColor: 'rgba(255, 255, 255, 0.95)',
                   border: '1px solid #e0e7ff',
                   borderRadius: '8px'
                 }}
               />
-              {/* Área entre as funções */}
               <Area
                 type="monotone"
                 dataKey="area"
@@ -316,31 +215,28 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 fillOpacity={0.4}
                 strokeWidth={0}
               />
-              {/* Primeira função - linha azul */}
               <Line 
                 type="monotone" 
                 dataKey="y1" 
                 stroke="#2563eb" 
-                strokeWidth={2.5}
+                strokeWidth={2}
                 dot={false}
                 name="f(x)"
               />
-              {/* Segunda função - linha vermelha */}
               <Line 
                 type="monotone" 
                 dataKey="y2" 
                 stroke="#dc2626" 
-                strokeWidth={2.5}
+                strokeWidth={2}
                 dot={false}
                 name="g(x)"
               />
-              {/* Pontos de interseção */}
               {intersections.map((point, index) => (
                 <ReferenceDot
                   key={index}
                   x={point.x}
                   y={point.y}
-                  r={5}
+                  r={4}
                   fill="#10b981"
                   stroke="#059669"
                   strokeWidth={2}
@@ -356,7 +252,6 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 tick={{ fontSize: 12 }}
                 axisLine={{ stroke: '#6366f1' }}
                 tickLine={{ stroke: '#6366f1' }}
-                ticks={xTicks}
                 domain={[effectiveXMin, effectiveXMax]}
                 type="number"
                 tickFormatter={(value) => value.toFixed(1)}
@@ -366,12 +261,11 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 tick={{ fontSize: 12 }}
                 axisLine={{ stroke: '#6366f1' }}
                 tickLine={{ stroke: '#6366f1' }}
-                ticks={yTicks}
                 tickFormatter={(value) => value.toFixed(1)}
               />
               <Tooltip 
-                formatter={(value: number) => [value.toFixed(4), 'f(x)']}
-                labelFormatter={(value: number) => `x = ${value.toFixed(4)}`}
+                formatter={(value: number) => [value.toFixed(3), 'f(x)']}
+                labelFormatter={(value: number) => `x = ${value.toFixed(3)}`}
                 contentStyle={{
                   backgroundColor: 'rgba(255, 255, 255, 0.95)',
                   border: '1px solid #e0e7ff',
@@ -382,7 +276,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 type="monotone" 
                 dataKey="y1" 
                 stroke="#2563eb" 
-                strokeWidth={2.5}
+                strokeWidth={2}
                 dot={false}
                 name="f(x)"
               />
@@ -392,7 +286,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
       </div>
       
       <div className="mt-2 text-xs text-gray-500 text-center">
-        Zoom: {zoomLevel.toFixed(1)}x | {intersections.length > 0 ? `Interseções: ${intersections.map(p => `(${p.x.toFixed(3)}, ${p.y.toFixed(3)})`).join(', ')}` : 'Use os controles de zoom para explorar'}
+        Zoom: {zoomLevel.toFixed(1)}x | {intersections.length > 0 ? `Interseções: ${intersections.map(p => `(${p.x.toFixed(2)}, ${p.y.toFixed(2)})`).join(', ')}` : 'Use os controles de zoom para explorar'}
       </div>
     </div>
   );
