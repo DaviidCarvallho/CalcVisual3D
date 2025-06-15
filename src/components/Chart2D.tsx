@@ -12,6 +12,19 @@ interface Chart2DProps {
 
 const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
   const data = useMemo(() => {
+    console.log('Gerando dados do gráfico:', { function1, function2, xMin, xMax });
+    
+    // Validar parâmetros de entrada
+    if (!function1 || typeof function1 !== 'string') {
+      console.error('function1 é inválida:', function1);
+      return [];
+    }
+    
+    if (typeof xMin !== 'number' || typeof xMax !== 'number' || xMin >= xMax) {
+      console.error('Parâmetros xMin/xMax inválidos:', { xMin, xMax });
+      return [];
+    }
+
     const points = [];
     const step = (xMax - xMin) / 200;
     
@@ -34,10 +47,24 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
       }
     }
     
+    console.log(`Gerados ${points.length} pontos para o gráfico`);
     return points;
   }, [function1, function2, xMin, xMax]);
 
   const hasSecondFunction = function2 && function2.trim() !== '';
+
+  if (data.length === 0) {
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200 h-96">
+        <h3 className="text-lg font-semibold mb-4 text-gray-800">
+          Gráfico 2D
+        </h3>
+        <div className="flex items-center justify-center h-full text-gray-500">
+          <p>Erro ao gerar dados do gráfico. Verifique as funções inseridas.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-lg border border-gray-200 h-96">
