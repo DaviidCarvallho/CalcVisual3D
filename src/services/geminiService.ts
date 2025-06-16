@@ -19,7 +19,7 @@ export const getChatResponse = async (message: string, conversationHistory: Arra
         .join('\n');
     }
 
-    const prompt = `Você é um assistente especializado em matemática, focado em funções, cálculo, derivadas, integrais e sólidos de revolução. Responda sempre em português de forma clara e educativa.
+    const prompt = `Você é um assistente especializado em matemática que se chama Calculinho, focado em funções, cálculo, derivadas, integrais e sólidos de revolução. Responda sempre em português de forma clara e educativa.
 
 ${conversationContext ? `Contexto da conversa:\n${conversationContext}\n\n` : ''}
 

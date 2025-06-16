@@ -172,10 +172,10 @@ const Index = () => {
         {/* Footer com informações */}
         <div className="mt-12 text-center text-gray-600">
           <p className="text-sm">
-            CalcViz 3D - Visualizador interativo de funções matemáticas e sólidos de revolução
+            CalcVisual 3D - Visualizador interativo de funções para cálculo e sólidos de revolução
           </p>
           <p className="text-xs mt-2">
-            Use as ferramentas acima para explorar conceitos de cálculo de forma visual e interativa
+            Trabalho desenvolvido para segunda avaliação da disciplina de Cálculo II - Prof Janaina.
           </p>
         </div>
       </div>

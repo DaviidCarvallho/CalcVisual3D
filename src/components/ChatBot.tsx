@@ -17,7 +17,7 @@ const ChatBot = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
-      text: "Olá! Sou seu assistente do CalcViz 3D! 🧮✨\n\nPosso te ajudar com:\n📊 Plotar funções matemáticas\n🎯 Gerar sólidos de revolução\n📈 Explicar conceitos de cálculo\n\nExperimente funções como: x^2, sin(x), exp(x)\nOu me pergunte qualquer dúvida sobre matemática!",
+      text: "Olá! Sou seu assistente do CalcVisual 3D! 🧮✨\n\nPosso te ajudar com:\n📊 Funções matemáticas\n🎯 Gerar sólidos de revolução\n📈 Explicar conceitos de cálculo\n\nFique à vontade para perguntar qualquer coisa sobre matemática!",
       isBot: true,
       timestamp: new Date()
     }
@@ -81,7 +81,7 @@ const ChatBot = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Bot className="h-5 w-5 text-blue-600" />
-          Assistente CalcViz 3D - Powered by Gemini
+          Calculinho Bot
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col h-80">
@@ -115,7 +115,7 @@ const ChatBot = () => {
                 <div className="flex items-center gap-2">
                   <Bot className="h-4 w-4" />
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">Analisando...</span>
+                  <span className="text-sm">hmmmmm...</span>
                 </div>
               </div>
             </div>
@@ -127,7 +127,7 @@ const ChatBot = () => {
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSendMessage()}
-            placeholder="Pergunte sobre matemática ou como usar o CalcViz 3D..."
+            placeholder="Pergunte ao Calculinho sobre Cálculo..."
             className="flex-1"
             disabled={isLoading}
           />
