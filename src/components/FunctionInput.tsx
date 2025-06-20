@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calculator, RotateCcw, Integral } from 'lucide-react';
+import { Calculator, RotateCcw, Sigma } from 'lucide-react';
 
 interface FunctionInputProps {
   onFunctionChange: (func1: string, func2: string | null, min: number, max: number) => void;
@@ -113,7 +112,7 @@ const FunctionInput = ({ onFunctionChange, onGenerateRevolution, onIntegralLimit
         {/* Limites de Integração */}
         <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
           <Label className="text-sm font-semibold text-green-800 flex items-center gap-2 mb-3">
-            <Integral className="h-4 w-4" />
+            <Sigma className="h-4 w-4" />
             Limites de Integração
           </Label>
           <div className="grid grid-cols-2 gap-3">
