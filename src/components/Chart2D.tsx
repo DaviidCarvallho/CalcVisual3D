@@ -9,9 +9,11 @@ interface Chart2DProps {
   function2?: string | null;
   xMin: number;
   xMax: number;
+  integralLowerLimit?: number;
+  integralUpperLimit?: number;
 }
 
-const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
+const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, integralUpperLimit = 2 }: Chart2DProps) => {
   const data = useMemo(() => {
     console.log('Gerando dados do gráfico:', { function1, function2, xMin, xMax });
     
@@ -45,13 +47,18 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
           point.y2 = Number(y2.toFixed(4));
         }
         
+        // Adicionar dados para a área da integral
+        if (x >= integralLowerLimit && x <= integralUpperLimit) {
+          point.integralArea = Number(y1.toFixed(4));
+        }
+        
         points.push(point);
       }
     }
     
     console.log(`Gerados ${points.length} pontos para o gráfico`);
     return points;
-  }, [function1, function2, xMin, xMax]);
+  }, [function1, function2, xMin, xMax, integralLowerLimit, integralUpperLimit]);
 
   const hasSecondFunction = function2 && function2.trim() !== '';
 
@@ -67,6 +74,24 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
       areaValue
     };
   }, [function1, function2, xMin, xMax, hasSecondFunction]);
+
+  // Calcular o valor da integral definida
+  const integralValue = useMemo(() => {
+    if (!function1) return 0;
+    
+    const step = (integralUpperLimit - integralLowerLimit) / 100;
+    let sum = 0;
+    
+    for (let i = 0; i <= 100; i++) {
+      const x = integralLowerLimit + i * step;
+      const y = evaluateFunction(function1, x);
+      if (!isNaN(y) && isFinite(y)) {
+        sum += y * step;
+      }
+    }
+    
+    return sum;
+  }, [function1, integralLowerLimit, integralUpperLimit]);
 
   // Gerar dados corrigidos para a área entre as curvas
   const areaChartData = useMemo(() => {
@@ -214,6 +239,9 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
         <p className="text-xs text-gray-500 mt-1">
           Domínio: [{formatAxisValue(xMin, true)}, {formatAxisValue(xMax, true)}]
         </p>
+        <p className="text-xs text-green-600 mt-1 font-semibold">
+          Integral ∫[{integralLowerLimit}, {integralUpperLimit}] f(x) dx ≈ {integralValue.toFixed(3)}
+        </p>
         {hasSecondFunction && areaData && (
           <>
             <p className="text-xs text-green-600 mt-1 font-semibold">
@@ -239,6 +267,20 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
               <ReferenceLine x={0} stroke="#9ca3af" strokeWidth={2} />
             )}
             
+            {/* Limites da integral */}
+            <ReferenceLine 
+              x={integralLowerLimit} 
+              stroke="#10b981" 
+              strokeWidth={3} 
+              strokeDasharray="4 4" 
+            />
+            <ReferenceLine 
+              x={integralUpperLimit} 
+              stroke="#10b981" 
+              strokeWidth={3} 
+              strokeDasharray="4 4" 
+            />
+            
             {/* Linhas de interseção mais visíveis */}
             {areaData?.intersections.map((intersection, index) => (
               <ReferenceLine 
@@ -255,7 +297,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
               <>
                 <ReferenceLine 
                   x={areaData.effectiveXMin} 
-                  stroke="#22c55e" 
+                  stroke="#22c55e"
                   strokeWidth={4} 
                   strokeDasharray="4 4" 
                 />
@@ -296,7 +338,7 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 
                 return [
                   formatAxisValue(value), 
-                  name === 'y1' ? 'f(x)' : name === 'y2' ? 'g(x)' : name
+                  name === 'y1' ? 'f(x)' : name === 'y2' ? 'g(x)' : name === 'integralArea' ? 'Integral' : name
                 ];
               }}
               labelFormatter={(value: any) => {
@@ -311,6 +353,16 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
                 borderRadius: '8px',
                 fontSize: '10px'
               }}
+            />
+            
+            {/* Área da integral definida */}
+            <Area
+              type="monotone"
+              dataKey="integralArea"
+              stroke="none"
+              fill="rgba(16, 185, 129, 0.3)"
+              fillOpacity={0.5}
+              connectNulls={false}
             />
             
             {/* Área base (função inferior) - invisível */}
@@ -367,7 +419,10 @@ const Chart2D = ({ function1, function2, xMin, xMax }: Chart2DProps) => {
       </div>
       
       <div className="mt-1 text-xs text-gray-500 text-center">
-        {hasSecondFunction ? 'Área entre funções (sempre em módulo) delimitada pelas interseções' : 'Visualização da função matemática'}
+        {hasSecondFunction 
+          ? 'Área entre funções (sempre em módulo) delimitada pelas interseções' 
+          : 'Visualização da função matemática com área da integral definida em verde'
+        }
       </div>
     </div>
   );

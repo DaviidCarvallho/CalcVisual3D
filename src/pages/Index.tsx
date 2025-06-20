@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import FunctionInput from '@/components/FunctionInput';
@@ -13,8 +14,10 @@ const Index = () => {
   const [xMin, setXMin] = useState(-5);
   const [xMax, setXMax] = useState(5);
   const [showRevolution, setShowRevolution] = useState(false);
+  const [integralLowerLimit, setIntegralLowerLimit] = useState(-2);
+  const [integralUpperLimit, setIntegralUpperLimit] = useState(2);
   
-  // Novos estados para controlar a visibilidade dos elementos 3D
+  // Estados para controlar a visibilidade dos elementos 3D
   const [showBlueSurface, setShowBlueSurface] = useState(true);
   const [showRedSurface, setShowRedSurface] = useState(true);
   const [showFunctionLines, setShowFunctionLines] = useState(true);
@@ -25,6 +28,11 @@ const Index = () => {
     setXMin(min);
     setXMax(max);
     setShowRevolution(false);
+  };
+
+  const handleIntegralLimitsChange = (lowerLimit: number, upperLimit: number) => {
+    setIntegralLowerLimit(lowerLimit);
+    setIntegralUpperLimit(upperLimit);
   };
 
   const handleGenerateRevolution = () => {
@@ -51,6 +59,7 @@ const Index = () => {
             <FunctionInput
               onFunctionChange={handleFunctionChange}
               onGenerateRevolution={handleGenerateRevolution}
+              onIntegralLimitsChange={handleIntegralLimitsChange}
             />
             
             {/* Controles de visibilidade 3D */}
@@ -123,6 +132,9 @@ const Index = () => {
                 <div>
                   <strong>Domínio:</strong> {getDomainText()}
                 </div>
+                <div>
+                  <strong>Integral definida:</strong> ∫[{integralLowerLimit}, {integralUpperLimit}] f(x) dx
+                </div>
                 {showRevolution && !function2 && (
                   <div>
                     <strong>Volume do sólido:</strong> V = π∫[{xMin.toFixed(1)},{xMax.toFixed(1)}] [f(x)]² dx
@@ -148,6 +160,8 @@ const Index = () => {
               function2={function2}
               xMin={xMin}
               xMax={xMax}
+              integralLowerLimit={integralLowerLimit}
+              integralUpperLimit={integralUpperLimit}
             />
 
             {/* Visualização 3D */}

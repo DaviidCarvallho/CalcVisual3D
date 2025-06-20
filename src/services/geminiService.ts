@@ -19,19 +19,30 @@ export const getChatResponse = async (message: string, conversationHistory: Arra
         .join('\n');
     }
 
-    const prompt = `Você é um assistente especializado em matemática que se chama Calculinho, focado em funções, cálculo, derivadas, integrais e sólidos de revolução. Responda sempre em português de forma clara e educativa.
+    const prompt = `Você é um assistente especializado em matemática que se chama Calculinho, focado em funções, cálculo, derivadas, integrais e sólidos de revolução. 
+
+IMPORTANTE: Responda sempre em português de forma clara e educativa. NÃO use formatação de texto como asteriscos (*), underlines (_), hashtags (#) ou qualquer outro tipo de marcação. Use apenas texto simples e direto. Não coloque texto em negrito, itálico ou qualquer formatação especial.
 
 ${conversationContext ? `Contexto da conversa:\n${conversationContext}\n\n` : ''}
 
 Pergunta atual: ${message}
 
-Responda de forma concisa e educativa:`;
+Responda de forma concisa e educativa usando apenas texto simples sem qualquer formatação:`;
 
     console.log('Enviando prompt para Gemini:', prompt);
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    const text = response.text();
+    let text = response.text();
+    
+    // Remover qualquer formatação que possa ter escapado
+    text = text
+      .replace(/\*\*(.*?)\*\*/g, '$1')  // Remove **texto**
+      .replace(/\*(.*?)\*/g, '$1')      // Remove *texto*
+      .replace(/_(.*?)_/g, '$1')        // Remove _texto_
+      .replace(/`(.*?)`/g, '$1')        // Remove `código`
+      .replace(/#{1,6}\s*/g, '')        // Remove # headers
+      .replace(/\[(.*?)\]\(.*?\)/g, '$1'); // Remove [links](url)
     
     console.log('Resposta recebida do Gemini:', text);
     
@@ -46,7 +57,18 @@ Responda de forma concisa e educativa:`;
         const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
         const result = await model.generateContent(message);
         const response = await result.response;
-        return response.text() || 'Desculpe, não consegui processar sua pergunta.';
+        let text = response.text() || 'Desculpe, não consegui processar sua pergunta.';
+        
+        // Remover formatação também do fallback
+        text = text
+          .replace(/\*\*(.*?)\*\*/g, '$1')
+          .replace(/\*(.*?)\*/g, '$1')
+          .replace(/_(.*?)_/g, '$1')
+          .replace(/`(.*?)`/g, '$1')
+          .replace(/#{1,6}\s*/g, '')
+          .replace(/\[(.*?)\]\(.*?\)/g, '$1');
+        
+        return text;
       } catch (secondError) {
         console.error('Erro também com gemini-pro:', secondError);
       }
