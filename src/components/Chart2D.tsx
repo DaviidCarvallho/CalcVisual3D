@@ -1,6 +1,8 @@
-
 import React, { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Area, ComposedChart } from 'recharts';
+import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
+import { Move3D } from 'lucide-react';
 import { evaluateFunction } from '@/utils/mathParser';
 import { calculateAreaBetweenCurves, calculateAreaValue } from '@/utils/areaCalculations';
 
@@ -11,9 +13,10 @@ interface Chart2DProps {
   xMax: number;
   integralLowerLimit?: number;
   integralUpperLimit?: number;
+  onDomainChange: (min: number, max: number) => void;
 }
 
-const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, integralUpperLimit = 2 }: Chart2DProps) => {
+const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, integralUpperLimit = 2, onDomainChange }: Chart2DProps) => {
   const data = useMemo(() => {
     console.log('Gerando dados do gráfico:', { function1, function2, xMin, xMax });
     
@@ -62,7 +65,7 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
 
   const hasSecondFunction = function2 && function2.trim() !== '';
 
-  // Calcular área entre as curvas e interseções
+  
   const areaData = useMemo(() => {
     if (!hasSecondFunction) return null;
     
@@ -75,7 +78,7 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
     };
   }, [function1, function2, xMin, xMax, hasSecondFunction]);
 
-  // Calcular o valor da integral definida
+  
   const integralValue = useMemo(() => {
     if (!function1) return 0;
     
@@ -93,7 +96,7 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
     return sum;
   }, [function1, integralLowerLimit, integralUpperLimit]);
 
-  // Gerar dados corrigidos para a área entre as curvas
+  
   const areaChartData = useMemo(() => {
     if (!areaData || !hasSecondFunction) return data;
     
@@ -122,7 +125,7 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
     });
   }, [data, areaData, hasSecondFunction]);
 
-  // Calcular limites do eixo Y
+  
   const { yMin, yMax } = useMemo(() => {
     if (data.length === 0) return { yMin: -5, yMax: 5 };
     
@@ -160,7 +163,7 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
     };
   }, [data, function1, function2]);
 
-  // Formatação dos valores dos eixos
+  
   const formatAxisValue = (value: number, isX: boolean = false) => {
     if (Math.abs(value) < 0.0001) return '0';
     
@@ -178,7 +181,7 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
     return value.toFixed(3);
   };
 
-  // Gerar ticks para o eixo Y
+  
   const generateYTicks = useMemo(() => {
     const functions = [function1, function2].filter(Boolean);
     const isTrigonometric = functions.some(f => f.includes('sin') || f.includes('cos'));
@@ -212,6 +215,32 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
     return ticks;
   }, [yMin, yMax, function1, function2]);
 
+  
+  const minRange = -10;
+  const maxRange = 10;
+
+  const handleMinChange = (value: number[]) => {
+    const newMin = value[0];
+    if (newMin < xMax) {
+      onDomainChange(newMin, xMax);
+    }
+  };
+
+  const handleMaxChange = (value: number[]) => {
+    const newMax = value[0];
+    if (newMax > xMin) {
+      onDomainChange(xMin, newMax);
+    }
+  };
+
+  const formatValue = (value: number) => {
+    if (Math.abs(value - Math.PI) < 0.01) return 'π';
+    if (Math.abs(value + Math.PI) < 0.01) return '-π';
+    if (Math.abs(value - 2 * Math.PI) < 0.01) return '2π';
+    if (Math.abs(value + 2 * Math.PI) < 0.01) return '-2π';
+    return value.toFixed(1);
+  };
+
   if (data.length === 0) {
     return (
       <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200 h-96">
@@ -226,8 +255,50 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
   }
 
   return (
-    <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
-      <div className="mb-2">
+    <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200 relative">
+      
+      <div className="absolute top-4 right-4 z-10 bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-3 shadow-md min-w-[200px]">
+        <div className="flex items-center gap-2 mb-3">
+          <Move3D className="h-3 w-3 text-purple-700" />
+          <span className="text-xs font-medium text-purple-800">Controle de Domínio</span>
+        </div>
+        
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs font-medium text-purple-700 mb-1 block">
+              X Mín: {formatValue(xMin)}
+            </Label>
+            <Slider
+              value={[xMin]}
+              onValueChange={handleMinChange}
+              min={minRange}
+              max={maxRange}
+              step={0.1}
+              className="w-full"
+            />
+          </div>
+          
+          <div>
+            <Label className="text-xs font-medium text-purple-700 mb-1 block">
+              X Máx: {formatValue(xMax)}
+            </Label>
+            <Slider
+              value={[xMax]}
+              onValueChange={handleMaxChange}
+              min={minRange}
+              max={maxRange}
+              step={0.1}
+              className="w-full"
+            />
+          </div>
+          
+          <div className="text-xs text-purple-600 bg-purple-50 p-2 rounded border border-purple-200">
+            <strong>Domínio:</strong> [{formatValue(xMin)}, {formatValue(xMax)}]
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-2 pr-52">
         <h3 className="text-lg font-semibold text-gray-800">
           <span className="text-blue-600">f(x) = {function1}</span>
           {hasSecondFunction && (
@@ -260,7 +331,7 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
               <ReferenceLine x={0} stroke="#9ca3af" strokeWidth={2} />
             )}
             
-            {/* Limites da integral */}
+            
             <ReferenceLine 
               x={integralLowerLimit} 
               stroke="#10b981" 
@@ -274,7 +345,7 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
               strokeDasharray="4 4" 
             />
             
-            {/* Limites da área mais visíveis */}
+            
             {areaData && (
               <>
                 <ReferenceLine 
@@ -337,7 +408,7 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
               }}
             />
             
-            {/* Área da integral definida */}
+            
             <Area
               type="monotone"
               dataKey="integralArea"
@@ -347,7 +418,7 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
               connectNulls={false}
             />
             
-            {/* Área base (função inferior) - invisível */}
+            
             {hasSecondFunction && (
               <Area
                 type="monotone"
@@ -359,7 +430,7 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
               />
             )}
             
-            {/* Área de preenchimento (diferença entre funções) - cor laranja */}
+            
             {hasSecondFunction && (
               <Area
                 type="monotone"
@@ -372,7 +443,7 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
               />
             )}
             
-            {/* Linhas das funções */}
+            
             <Line 
               type="monotone" 
               dataKey="y1" 

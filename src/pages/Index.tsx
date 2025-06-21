@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import FunctionInput from '@/components/FunctionInput';
-import DomainSlider from '@/components/DomainSlider';
 import Chart2D from '@/components/Chart2D';
 import Revolution3D from '@/components/Revolution3D';
 import ChatBot from '@/components/ChatBot';
@@ -67,12 +66,6 @@ const Index = () => {
               onFunctionChange={handleFunctionChange}
               onGenerateRevolution={handleGenerateRevolution}
               onIntegralLimitsChange={handleIntegralLimitsChange}
-            />
-            
-            <DomainSlider
-              xMin={xMin}
-              xMax={xMax}
-              onDomainChange={handleDomainChange}
             />
             
             {/* Controles de visibilidade 3D */}
@@ -175,6 +168,7 @@ const Index = () => {
               xMax={xMax}
               integralLowerLimit={integralLowerLimit}
               integralUpperLimit={integralUpperLimit}
+              onDomainChange={handleDomainChange}
             />
 
             {/* Visualização 3D */}
