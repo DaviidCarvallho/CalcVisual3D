@@ -15,6 +15,8 @@ interface Revolution3DProps {
   showBlueSurface?: boolean;
   showRedSurface?: boolean;
   showFunctionLines?: boolean;
+  integralLowerLimit?: number;
+  integralUpperLimit?: number;
 }
 
 const RegionMesh = ({ 
@@ -25,23 +27,27 @@ const RegionMesh = ({
   showRevolution, 
   showBlueSurface = true,
   showRedSurface = true,
-  showFunctionLines = true
+  showFunctionLines = true,
+  integralLowerLimit = -2,
+  integralUpperLimit = 2
 }: Revolution3DProps) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
 
   const hasSecondFunction = function2 && function2.trim() !== '';
 
-  const { geometry, secondGeometry, regionGeometry, solidGeometry, innerSolidGeometry } = useMemo(() => {
+  const { geometry, secondGeometry, regionGeometry, solidGeometry, innerSolidGeometry, integralSolidGeometry } = useMemo(() => {
     if (showRevolution && !hasSecondFunction) {
-      // Lógica original para sólido de revolução de uma função
+      // Sólido de revolução da integral definida
       const points = [];
       const segments = 100;
-      const step = (xMax - xMin) / segments;
+      const effectiveXMin = Math.max(xMin, integralLowerLimit);
+      const effectiveXMax = Math.min(xMax, integralUpperLimit);
+      const step = (effectiveXMax - effectiveXMin) / segments;
 
       const functionPoints = [];
       for (let i = 0; i <= segments; i++) {
-        const x = xMin + i * step;
+        const x = effectiveXMin + i * step;
         const y = evaluateFunction(functionStr, x);
         
         if (!isNaN(y) && isFinite(y) && Math.abs(y) < 50) {
@@ -50,8 +56,8 @@ const RegionMesh = ({
       }
 
       if (functionPoints.length === 0) {
-        functionPoints.push({ x: xMin, y: 0.5 });
-        functionPoints.push({ x: xMax, y: 0.5 });
+        functionPoints.push({ x: effectiveXMin, y: 0.5 });
+        functionPoints.push({ x: effectiveXMax, y: 0.5 });
       }
 
       const maxRadius = Math.max(...functionPoints.map(p => Math.abs(p.y)));
@@ -60,7 +66,7 @@ const RegionMesh = ({
       for (const point of functionPoints) {
         let radius = Math.abs(point.y) * scaleFactor;
         radius = Math.max(radius, 0.05);
-        const zPosition = (point.x - xMin) / (xMax - xMin) * 4 - 2;
+        const zPosition = (point.x - effectiveXMin) / (effectiveXMax - effectiveXMin) * 4 - 2;
         points.push(new THREE.Vector2(radius, zPosition));
       }
 
@@ -71,9 +77,16 @@ const RegionMesh = ({
         points.push(new THREE.Vector2(0.01, lastPoint.y));
       }
 
-      const geometry = new THREE.LatheGeometry(points, 32);
+      const integralGeometry = new THREE.LatheGeometry(points, 32);
       
-      return { geometry, secondGeometry: null, regionGeometry: null, solidGeometry: null, innerSolidGeometry: null };
+      return { 
+        geometry: null, 
+        secondGeometry: null, 
+        regionGeometry: null, 
+        solidGeometry: null, 
+        innerSolidGeometry: null,
+        integralSolidGeometry: integralGeometry
+      };
     } else if (hasSecondFunction) {
       // Criar sólido de revolução para duas funções
       const areaResult = calculateAreaBetweenCurves(functionStr, function2, xMin, xMax);
@@ -137,7 +150,8 @@ const RegionMesh = ({
         secondGeometry: geometry2, 
         regionGeometry: null,
         solidGeometry: outerSolid,
-        innerSolidGeometry: innerSolid
+        innerSolidGeometry: innerSolid,
+        integralSolidGeometry: null
       };
     } else {
       // Representação 2D de uma função no espaço 3D
@@ -162,12 +176,19 @@ const RegionMesh = ({
       }
 
       const geometry = new THREE.BufferGeometry().setFromPoints(points);
-      return { geometry, secondGeometry: null, regionGeometry: null, solidGeometry: null, innerSolidGeometry: null };
+      return { 
+        geometry, 
+        secondGeometry: null, 
+        regionGeometry: null, 
+        solidGeometry: null, 
+        innerSolidGeometry: null,
+        integralSolidGeometry: null
+      };
     }
-  }, [functionStr, function2, xMin, xMax, showRevolution, hasSecondFunction]);
+  }, [functionStr, function2, xMin, xMax, showRevolution, hasSecondFunction, integralLowerLimit, integralUpperLimit]);
 
   useFrame(() => {
-    if (meshRef.current && showRevolution && !hasSecondFunction) {
+    if (meshRef.current && showRevolution) {
       meshRef.current.rotation.y += 0.005;
     }
     if (groupRef.current && hasSecondFunction) {
@@ -181,11 +202,11 @@ const RegionMesh = ({
 
   return (
     <group ref={groupRef}>
-      {showRevolution && !hasSecondFunction ? (
-        // Renderizar sólido de revolução para uma função
-        <mesh ref={meshRef} geometry={geometry} position={[0, 0, 0]}>
+      {showRevolution && !hasSecondFunction && integralSolidGeometry ? (
+        // Renderizar sólido de revolução da integral definida
+        <mesh ref={meshRef} geometry={integralSolidGeometry} position={[0, 0, 0]}>
           <meshStandardMaterial 
-            color="#3b82f6" 
+            color="#10b981" 
             transparent 
             opacity={0.8}
             side={THREE.DoubleSide}
@@ -270,7 +291,7 @@ const RegionMesh = ({
         </>
       ) : (
         // Renderizar linha da função única
-        showFunctionLines && (
+        showFunctionLines && geometry && (
           <primitive object={new THREE.Line(geometry, new THREE.LineBasicMaterial({ 
             color: "#3b82f6", 
             linewidth: 3 
@@ -284,13 +305,23 @@ const RegionMesh = ({
 const Revolution3D = (props: Revolution3DProps) => {
   const hasSecondFunction = props.function2 && props.function2.trim() !== '';
   
+  const getTitle = () => {
+    if (props.showRevolution && !hasSecondFunction) {
+      return 'Sólido de Revolução da Integral Definida';
+    } else if (props.showRevolution && hasSecondFunction) {
+      return 'Sólido de Revolução entre Funções';
+    } else if (hasSecondFunction) {
+      return 'Área 3D entre Funções';
+    } else {
+      return 'Visualização 3D';
+    }
+  };
+  
   return (
     <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700 h-96 relative">
       <div className="absolute top-4 left-4 z-10 text-white">
         <h3 className="text-lg font-semibold">
-          {props.showRevolution && !hasSecondFunction ? 'Sólido de Revolução 3D' : 
-           props.showRevolution && hasSecondFunction ? 'Sólido de Revolução entre Funções' :
-           hasSecondFunction ? 'Área 3D entre Funções' : 'Visualização 3D'}
+          {getTitle()}
         </h3>
         <p className="text-sm text-gray-300">
           f(x) = {props.functionStr}
@@ -300,9 +331,14 @@ const Revolution3D = (props: Revolution3DProps) => {
             g(x) = {props.function2}
           </p>
         )}
-        {props.showRevolution && (
+        {props.showRevolution && !hasSecondFunction && (
           <p className="text-xs text-gray-400 mt-1">
-            {hasSecondFunction ? 'Volume formado pela rotação da área em torno do eixo X' : 'Rotação em torno do eixo X'}
+            Volume da integral ∫[{props.integralLowerLimit}, {props.integralUpperLimit}] π[f(x)]² dx
+          </p>
+        )}
+        {props.showRevolution && hasSecondFunction && (
+          <p className="text-xs text-gray-400 mt-1">
+            Volume formado pela rotação da área em torno do eixo X
           </p>
         )}
         {hasSecondFunction && !props.showRevolution && (

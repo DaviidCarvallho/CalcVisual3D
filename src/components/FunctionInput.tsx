@@ -1,9 +1,10 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calculator, RotateCcw, Sigma } from 'lucide-react';
+import { Calculator, RotateCcw, Sigma, Plus, Minus } from 'lucide-react';
 
 interface FunctionInputProps {
   onFunctionChange: (func1: string, func2: string | null, min: number, max: number) => void;
@@ -14,16 +15,16 @@ interface FunctionInputProps {
 const FunctionInput = ({ onFunctionChange, onGenerateRevolution, onIntegralLimitsChange }: FunctionInputProps) => {
   const [function1, setFunction1] = useState('x^2');
   const [function2, setFunction2] = useState('');
+  const [showSecondFunction, setShowSecondFunction] = useState(false);
   const [xMin, setXMin] = useState(-5);
   const [xMax, setXMax] = useState(5);
   const [integralLowerLimit, setIntegralLowerLimit] = useState(-2);
   const [integralUpperLimit, setIntegralUpperLimit] = useState(2);
 
   const handleApply = () => {
-    const func2 = function2.trim() === '' ? null : function2;
+    const func2 = showSecondFunction && function2.trim() !== '' ? function2 : null;
     onFunctionChange(function1, func2, xMin, xMax);
     
-    // Notificar sobre os limites de integração
     if (onIntegralLimitsChange) {
       onIntegralLimitsChange(integralLowerLimit, integralUpperLimit);
     }
@@ -42,6 +43,7 @@ const FunctionInput = ({ onFunctionChange, onGenerateRevolution, onIntegralLimit
     setFunction2(preset.f2);
     setXMin(preset.min);
     setXMax(preset.max);
+    setShowSecondFunction(preset.f2 !== '');
   };
 
   return (
@@ -53,61 +55,57 @@ const FunctionInput = ({ onFunctionChange, onGenerateRevolution, onIntegralLimit
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Função principal */}
-        <div>
-          <Label htmlFor="function1" className="text-sm font-medium text-blue-700">
-            Função f(x)
-          </Label>
-          <Input
-            id="function1"
-            value={function1}
-            onChange={(e) => setFunction1(e.target.value)}
-            placeholder="Ex: x^2, sin(x), exp(x)"
-            className="mt-1"
-          />
-        </div>
-
-        {/* Segunda função (opcional) */}
-        <div>
-          <Label htmlFor="function2" className="text-sm font-medium text-blue-700">
-            Segunda função g(x) (opcional)
-          </Label>
-          <Input
-            id="function2"
-            value={function2}
-            onChange={(e) => setFunction2(e.target.value)}
-            placeholder="Ex: x+2, 2*x, deixe vazio se não usar"
-            className="mt-1"
-          />
-        </div>
-
-        {/* Domínio */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* Função principal com botão aplicar */}
+        <div className="space-y-3">
           <div>
-            <Label htmlFor="xmin" className="text-sm font-medium text-blue-700">
-              x mínimo
+            <Label htmlFor="function1" className="text-sm font-medium text-blue-700">
+              Função f(x)
             </Label>
             <Input
-              id="xmin"
-              type="number"
-              value={xMin}
-              onChange={(e) => setXMin(Number(e.target.value))}
+              id="function1"
+              value={function1}
+              onChange={(e) => setFunction1(e.target.value)}
+              placeholder="Ex: x^2, sin(x), exp(x)"
               className="mt-1"
             />
           </div>
+          
+          <Button 
+            onClick={handleApply} 
+            className="w-full bg-blue-600 hover:bg-blue-700"
+          >
+            Aplicar Função
+          </Button>
+        </div>
+
+        {/* Botão para mostrar/ocultar segunda função */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowSecondFunction(!showSecondFunction)}
+            className="flex items-center gap-2 text-blue-600 border-blue-200 hover:bg-blue-50"
+          >
+            {showSecondFunction ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            {showSecondFunction ? 'Remover Segunda Função' : 'Adicionar Segunda Função'}
+          </Button>
+        </div>
+
+        {/* Segunda função (condicional) */}
+        {showSecondFunction && (
           <div>
-            <Label htmlFor="xmax" className="text-sm font-medium text-blue-700">
-              x máximo
+            <Label htmlFor="function2" className="text-sm font-medium text-blue-700">
+              Segunda função g(x)
             </Label>
             <Input
-              id="xmax"
-              type="number"
-              value={xMax}
-              onChange={(e) => setXMax(Number(e.target.value))}
+              id="function2"
+              value={function2}
+              onChange={(e) => setFunction2(e.target.value)}
+              placeholder="Ex: x+2, 2*x"
               className="mt-1"
             />
           </div>
-        </div>
+        )}
 
         {/* Limites de Integração */}
         <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
@@ -168,24 +166,15 @@ const FunctionInput = ({ onFunctionChange, onGenerateRevolution, onIntegralLimit
           </div>
         </div>
 
-        {/* Botões de ação */}
-        <div className="space-y-2">
-          <Button 
-            onClick={handleApply} 
-            className="w-full bg-blue-600 hover:bg-blue-700"
-          >
-            Aplicar Funções
-          </Button>
-          
-          <Button 
-            onClick={onGenerateRevolution} 
-            variant="secondary"
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Gerar Sólido de Revolução
-          </Button>
-        </div>
+        {/* Botão de sólido de revolução */}
+        <Button 
+          onClick={onGenerateRevolution} 
+          variant="secondary"
+          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2"
+        >
+          <RotateCcw className="h-4 w-4" />
+          Gerar Sólido de Revolução
+        </Button>
 
         {/* Ajuda */}
         <div className="text-xs text-blue-600 bg-blue-50 p-3 rounded border border-blue-200">

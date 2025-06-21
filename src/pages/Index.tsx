@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import FunctionInput from '@/components/FunctionInput';
+import DomainSlider from '@/components/DomainSlider';
 import Chart2D from '@/components/Chart2D';
 import Revolution3D from '@/components/Revolution3D';
 import ChatBot from '@/components/ChatBot';
@@ -25,6 +26,12 @@ const Index = () => {
   const handleFunctionChange = (func1: string, func2: string | null, min: number, max: number) => {
     setFunction1(func1);
     setFunction2(func2);
+    setXMin(min);
+    setXMax(max);
+    setShowRevolution(false);
+  };
+
+  const handleDomainChange = (min: number, max: number) => {
     setXMin(min);
     setXMax(max);
     setShowRevolution(false);
@@ -60,6 +67,12 @@ const Index = () => {
               onFunctionChange={handleFunctionChange}
               onGenerateRevolution={handleGenerateRevolution}
               onIntegralLimitsChange={handleIntegralLimitsChange}
+            />
+            
+            <DomainSlider
+              xMin={xMin}
+              xMax={xMax}
+              onDomainChange={handleDomainChange}
             />
             
             {/* Controles de visibilidade 3D */}
@@ -137,7 +150,7 @@ const Index = () => {
                 </div>
                 {showRevolution && !function2 && (
                   <div>
-                    <strong>Volume do sólido:</strong> V = π∫[{xMin.toFixed(1)},{xMax.toFixed(1)}] [f(x)]² dx
+                    <strong>Volume do sólido:</strong> V = π∫[{integralLowerLimit.toFixed(1)},{integralUpperLimit.toFixed(1)}] [f(x)]² dx
                   </div>
                 )}
                 {function2 && (
@@ -174,6 +187,8 @@ const Index = () => {
               showBlueSurface={showBlueSurface}
               showRedSurface={showRedSurface}
               showFunctionLines={showFunctionLines}
+              integralLowerLimit={integralLowerLimit}
+              integralUpperLimit={integralUpperLimit}
             />
           </div>
 

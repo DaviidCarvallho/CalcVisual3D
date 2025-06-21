@@ -243,16 +243,9 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
           Integral ∫[{integralLowerLimit}, {integralUpperLimit}] f(x) dx ≈ {integralValue.toFixed(3)}
         </p>
         {hasSecondFunction && areaData && (
-          <>
-            <p className="text-xs text-green-600 mt-1 font-semibold">
-              Área entre as curvas: {Math.abs(areaData.areaValue).toFixed(3)} unidades²
-            </p>
-            {areaData.intersections.length > 0 && (
-              <p className="text-xs text-purple-600 mt-1 font-semibold">
-                Interseções: {areaData.intersections.map(p => `(${p.x.toFixed(2)}, ${p.y.toFixed(2)})`).join(', ')}
-              </p>
-            )}
-          </>
+          <p className="text-xs text-orange-600 mt-1 font-semibold">
+            Área entre as curvas: {Math.abs(areaData.areaValue).toFixed(3)} unidades²
+          </p>
         )}
       </div>
       
@@ -281,29 +274,18 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
               strokeDasharray="4 4" 
             />
             
-            {/* Linhas de interseção mais visíveis */}
-            {areaData?.intersections.map((intersection, index) => (
-              <ReferenceLine 
-                key={`intersection-${index}`}
-                x={intersection.x} 
-                stroke="#8b5cf6" 
-                strokeWidth={4} 
-                strokeDasharray="6 6" 
-              />
-            ))}
-            
             {/* Limites da área mais visíveis */}
             {areaData && (
               <>
                 <ReferenceLine 
                   x={areaData.effectiveXMin} 
-                  stroke="#22c55e"
+                  stroke="#ea580c"
                   strokeWidth={4} 
                   strokeDasharray="4 4" 
                 />
                 <ReferenceLine 
                   x={areaData.effectiveXMax} 
-                  stroke="#22c55e" 
+                  stroke="#ea580c" 
                   strokeWidth={4} 
                   strokeDasharray="4 4" 
                 />
@@ -377,14 +359,14 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
               />
             )}
             
-            {/* Área de preenchimento (diferença entre funções) */}
+            {/* Área de preenchimento (diferença entre funções) - cor laranja */}
             {hasSecondFunction && (
               <Area
                 type="monotone"
                 dataKey="areaFill"
                 stackId="area"
                 stroke="none"
-                fill="rgba(34, 197, 94, 0.4)"
+                fill="rgba(234, 88, 12, 0.4)"
                 fillOpacity={0.6}
                 connectNulls={false}
               />
@@ -420,7 +402,7 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
       
       <div className="mt-1 text-xs text-gray-500 text-center">
         {hasSecondFunction 
-          ? 'Área entre funções (sempre em módulo) delimitada pelas interseções' 
+          ? 'Área entre funções (laranja) delimitada automaticamente | Integral definida (verde) pelos limites configurados' 
           : 'Visualização da função matemática com área da integral definida em verde'
         }
       </div>
