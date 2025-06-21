@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Area, ComposedChart } from 'recharts';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
-import { Move3D } from 'lucide-react';
 import { evaluateFunction } from '@/utils/mathParser';
 import { calculateAreaBetweenCurves, calculateAreaValue } from '@/utils/areaCalculations';
 
@@ -215,7 +214,6 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
     return ticks;
   }, [yMin, yMax, function1, function2]);
 
-  
   const minRange = -10;
   const maxRange = 10;
 
@@ -256,16 +254,35 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
 
   return (
     <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200 relative">
-      
-      <div className="absolute top-4 right-4 z-10 bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-3 shadow-md min-w-[200px]">
-        <div className="flex items-center gap-2 mb-3">
-          <Move3D className="h-3 w-3 text-purple-700" />
-          <span className="text-xs font-medium text-purple-800">Controle de Domínio</span>
+      {/* Cabeçalho com informações e controles de domínio */}
+      <div className="mb-2 flex items-start justify-between gap-4">
+        {/* Informações das funções */}
+        <div className="flex-1 min-w-0">
+          <h3 className="text-lg font-semibold text-gray-800">
+            <span className="text-blue-600">f(x) = {function1}</span>
+            {hasSecondFunction && (
+              <span className="block text-sm text-red-600 mt-1">
+                g(x) = {function2}
+              </span>
+            )}
+          </h3>
+          <p className="text-xs text-gray-500 mt-1">
+            Domínio: [{formatAxisValue(xMin, true)}, {formatAxisValue(xMax, true)}]
+          </p>
+          <p className="text-xs text-green-600 mt-1 font-semibold">
+            Integral ∫[{integralLowerLimit}, {integralUpperLimit}] f(x) dx ≈ {integralValue.toFixed(3)}
+          </p>
+          {hasSecondFunction && areaData && (
+            <p className="text-xs text-orange-600 mt-1 font-semibold">
+              Área entre as curvas: {Math.abs(areaData.areaValue).toFixed(3)} unidades²
+            </p>
+          )}
         </div>
-        
-        <div className="space-y-3">
-          <div>
-            <Label className="text-xs font-medium text-purple-700 mb-1 block">
+
+        {/* Controles de domínio */}
+        <div className="flex items-center gap-6 bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-3 shadow-sm">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs font-medium text-purple-700 whitespace-nowrap">
               X Mín: {formatValue(xMin)}
             </Label>
             <Slider
@@ -274,12 +291,12 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
               min={minRange}
               max={maxRange}
               step={0.1}
-              className="w-full"
+              className="w-20"
             />
           </div>
           
-          <div>
-            <Label className="text-xs font-medium text-purple-700 mb-1 block">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs font-medium text-purple-700 whitespace-nowrap">
               X Máx: {formatValue(xMax)}
             </Label>
             <Slider
@@ -288,36 +305,10 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
               min={minRange}
               max={maxRange}
               step={0.1}
-              className="w-full"
+              className="w-20"
             />
           </div>
-          
-          <div className="text-xs text-purple-600 bg-purple-50 p-2 rounded border border-purple-200">
-            <strong>Domínio:</strong> [{formatValue(xMin)}, {formatValue(xMax)}]
-          </div>
         </div>
-      </div>
-
-      <div className="mb-2 pr-52">
-        <h3 className="text-lg font-semibold text-gray-800">
-          <span className="text-blue-600">f(x) = {function1}</span>
-          {hasSecondFunction && (
-            <span className="block text-sm text-red-600 mt-1">
-              g(x) = {function2}
-            </span>
-          )}
-        </h3>
-        <p className="text-xs text-gray-500 mt-1">
-          Domínio: [{formatAxisValue(xMin, true)}, {formatAxisValue(xMax, true)}]
-        </p>
-        <p className="text-xs text-green-600 mt-1 font-semibold">
-          Integral ∫[{integralLowerLimit}, {integralUpperLimit}] f(x) dx ≈ {integralValue.toFixed(3)}
-        </p>
-        {hasSecondFunction && areaData && (
-          <p className="text-xs text-orange-600 mt-1 font-semibold">
-            Área entre as curvas: {Math.abs(areaData.areaValue).toFixed(3)} unidades²
-          </p>
-        )}
       </div>
       
       <div className="h-80 w-full">
