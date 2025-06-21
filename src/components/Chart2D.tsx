@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Area, ComposedChart } from 'recharts';
 import { Slider } from '@/components/ui/slider';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { evaluateFunction } from '@/utils/mathParser';
 import { calculateAreaBetweenCurves, calculateAreaValue } from '@/utils/areaCalculations';
@@ -214,8 +215,8 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
     return ticks;
   }, [yMin, yMax, function1, function2]);
 
-  const minRange = -10;
-  const maxRange = 10;
+  const minRange = -100;
+  const maxRange = 100;
 
   const handleMinChange = (value: number[]) => {
     const newMin = value[0];
@@ -227,6 +228,20 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
   const handleMaxChange = (value: number[]) => {
     const newMax = value[0];
     if (newMax > xMin) {
+      onDomainChange(xMin, newMax);
+    }
+  };
+
+  const handleMinInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newMin = parseFloat(e.target.value);
+    if (!isNaN(newMin) && newMin < xMax) {
+      onDomainChange(newMin, xMax);
+    }
+  };
+
+  const handleMaxInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newMax = parseFloat(e.target.value);
+    if (!isNaN(newMax) && newMax > xMin) {
       onDomainChange(xMin, newMax);
     }
   };
@@ -280,11 +295,18 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
         </div>
 
         {/* Controles de domínio */}
-        <div className="flex items-center gap-6 bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-3 shadow-sm">
+        <div className="flex items-center gap-4 bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-3 shadow-sm">
           <div className="flex items-center gap-2">
             <Label className="text-xs font-medium text-purple-700 whitespace-nowrap">
-              X Mín: {formatValue(xMin)}
+              X Mín:
             </Label>
+            <Input
+              type="number"
+              value={xMin}
+              onChange={handleMinInputChange}
+              className="w-16 h-6 text-xs"
+              step="0.1"
+            />
             <Slider
               value={[xMin]}
               onValueChange={handleMinChange}
@@ -297,8 +319,15 @@ const Chart2D = ({ function1, function2, xMin, xMax, integralLowerLimit = -2, in
           
           <div className="flex items-center gap-2">
             <Label className="text-xs font-medium text-purple-700 whitespace-nowrap">
-              X Máx: {formatValue(xMax)}
+              X Máx:
             </Label>
+            <Input
+              type="number"
+              value={xMax}
+              onChange={handleMaxInputChange}
+              className="w-16 h-6 text-xs"
+              step="0.1"
+            />
             <Slider
               value={[xMax]}
               onValueChange={handleMaxChange}

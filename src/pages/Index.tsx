@@ -59,9 +59,9 @@ const Index = () => {
       <Header />
       
       <div className="container mx-auto p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Painel de controles */}
-          <div className="space-y-6">
+          <div className="lg:col-span-1 space-y-6">
             <FunctionInput
               onFunctionChange={handleFunctionChange}
               onGenerateRevolution={handleGenerateRevolution}
@@ -159,7 +159,7 @@ const Index = () => {
           </div>
 
           {/* Visualizações */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-3 space-y-6">
             {/* Gráfico 2D */}
             <Chart2D
               function1={function1}
@@ -172,22 +172,24 @@ const Index = () => {
             />
 
             {/* Visualização 3D */}
-            <Revolution3D
-              functionStr={function1}
-              function2={function2}
-              xMin={xMin}
-              xMax={xMax}
-              showRevolution={showRevolution}
-              showBlueSurface={showBlueSurface}
-              showRedSurface={showRedSurface}
-              showFunctionLines={showFunctionLines}
-              integralLowerLimit={integralLowerLimit}
-              integralUpperLimit={integralUpperLimit}
-            />
+            <div className="h-[500px]">
+              <Revolution3D
+                functionStr={function1}
+                function2={function2}
+                xMin={xMin}
+                xMax={xMax}
+                showRevolution={showRevolution}
+                showBlueSurface={showBlueSurface}
+                showRedSurface={showRedSurface}
+                showFunctionLines={showFunctionLines}
+                integralLowerLimit={integralLowerLimit}
+                integralUpperLimit={integralUpperLimit}
+              />
+            </div>
           </div>
 
           {/* Chat */}
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-4">
             <ChatBot />
           </div>
         </div>

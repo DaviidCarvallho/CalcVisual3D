@@ -16,14 +16,12 @@ const FunctionInput = ({ onFunctionChange, onGenerateRevolution, onIntegralLimit
   const [function1, setFunction1] = useState('x^2');
   const [function2, setFunction2] = useState('');
   const [showSecondFunction, setShowSecondFunction] = useState(false);
-  const [xMin, setXMin] = useState(-5);
-  const [xMax, setXMax] = useState(5);
   const [integralLowerLimit, setIntegralLowerLimit] = useState(-2);
   const [integralUpperLimit, setIntegralUpperLimit] = useState(2);
 
   const handleApply = () => {
     const func2 = showSecondFunction && function2.trim() !== '' ? function2 : null;
-    onFunctionChange(function1, func2, xMin, xMax);
+    onFunctionChange(function1, func2, -5, 5);
     
     if (onIntegralLimitsChange) {
       onIntegralLimitsChange(integralLowerLimit, integralUpperLimit);
@@ -41,9 +39,15 @@ const FunctionInput = ({ onFunctionChange, onGenerateRevolution, onIntegralLimit
   const handlePredefinedFunction = (preset: typeof predefinedFunctions[0]) => {
     setFunction1(preset.f1);
     setFunction2(preset.f2);
-    setXMin(preset.min);
-    setXMax(preset.max);
     setShowSecondFunction(preset.f2 !== '');
+    
+    // Aplicar automaticamente
+    const func2 = preset.f2 !== '' ? preset.f2 : null;
+    onFunctionChange(preset.f1, func2, preset.min, preset.max);
+    
+    if (onIntegralLimitsChange) {
+      onIntegralLimitsChange(integralLowerLimit, integralUpperLimit);
+    }
   };
 
   return (
